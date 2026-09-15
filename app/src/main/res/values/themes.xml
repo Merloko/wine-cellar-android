@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme applied before Compose takes over. Uses a Material 3
+         dark-actionbar-less theme so the splash matches the app chrome. -->
+    <style name="Theme.WineCellar" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/wine_burgundy</item>
+        <item name="android:windowBackground">@color/wine_background</item>
+    </style>
+</resources>

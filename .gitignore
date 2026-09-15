@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+**/build/
+gradle/wrapper/gradle-wrapper.jar
+
+# Android signing — NEVER commit keystores
+*.keystore
+*.jks
+release.keystore
+
+# Local Android SDK config (machine-specific)
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Compiled output
+*.apk
+*.aab
+*.aar
