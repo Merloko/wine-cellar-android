@@ -2,13 +2,14 @@ package com.winecellar.ui
 
 import android.app.Application
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winecellar.WineCellarApp
+import com.winecellar.data.BarcodeLookup
 import com.winecellar.data.CellarExporter
 import com.winecellar.data.CellarImporter
 import com.winecellar.data.DrinkLog
+import com.winecellar.data.LookupOutcome
 import com.winecellar.data.Wine
 import com.winecellar.data.WineRepository
 import com.winecellar.domain.CellarStats
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -49,8 +51,8 @@ enum class ExportFormat(val extension: String, val mimeType: String) {
     JSON("json", "application/json"),
 }
 
-/** Import files larger than this are rejected to avoid OOM on an unexpected pick. */
-private const val MAX_IMPORT_BYTES = 10L * 1024 * 1024
+/** Imports are read up to this many characters, then rejected, to avoid OOM. */
+private const val MAX_IMPORT_CHARS = 10L * 1024 * 1024
 
 /** Buckets for the "what to drink now" screen. */
 data class DrinkNowState(
@@ -85,7 +87,8 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
                 wineries = wines.map { it.winery }.distinct().sorted(),
                 totalBottles = wines.sumOf { it.quantity },
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CellarUiState())
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CellarUiState())
 
     val drinkNow: StateFlow<DrinkNowState> =
         repository.wines.map { wines ->
@@ -110,13 +113,15 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
                 ready = ready.sortedWith(byWinery),
                 soon = soon.sortedWith(compareBy { DrinkWindowCalculator.windowFor(it).from ?: 0 }),
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DrinkNowState())
+        }.flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DrinkNowState())
 
     val history: StateFlow<List<DrinkLog>> =
         repository.drinkLog.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val stats: StateFlow<CellarStats> =
         repository.wines.map { CellarStatsCalculator.compute(it, currentYearNow()) }
+            .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CellarStats())
 
     fun wine(id: Long) = repository.wine(id)
@@ -139,6 +144,18 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { onResult(repository.findByBarcode(barcode)) }
     }
 
+    /**
+     * Opt-in online lookup of product info for a barcode (Open Food Facts).
+     * Only ever called from an explicit "Look up online" tap. [onResult] runs on
+     * the main thread with the result, or null on error / not found.
+     */
+    fun lookupBarcodeOnline(barcode: String, onResult: (LookupOutcome) -> Unit) {
+        viewModelScope.launch {
+            val outcome = withContext(Dispatchers.IO) { BarcodeLookup.fetch(barcode) }
+            onResult(outcome)
+        }
+    }
+
     // ---- import -----------------------------------------------------------
 
     /**
@@ -149,14 +166,23 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
     fun importFromUri(uri: Uri, onResult: (count: Int?) -> Unit) {
         viewModelScope.launch {
             val result: Int? = try {
+                // Read with a hard cap so a huge/unexpected pick can't OOM us,
+                // regardless of whether the provider reports a size.
                 val raw = withContext(Dispatchers.IO) {
-                    val resolver = getApplication<Application>().contentResolver
-                    val size = resolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)
-                        ?.use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else -1L } ?: -1L
-                    if (size > MAX_IMPORT_BYTES) {
-                        null
-                    } else {
-                        resolver.openInputStream(uri)?.use { it.bufferedReader().readText() }
+                    getApplication<Application>().contentResolver.openInputStream(uri)?.use { stream ->
+                        val reader = stream.bufferedReader()
+                        val builder = StringBuilder()
+                        val buffer = CharArray(8192)
+                        var total = 0L
+                        var overflow = false
+                        while (true) {
+                            val n = reader.read(buffer)
+                            if (n < 0) break
+                            total += n
+                            if (total > MAX_IMPORT_CHARS) { overflow = true; break }
+                            builder.append(buffer, 0, n)
+                        }
+                        if (overflow) null else builder.toString()
                     }
                 }
                 // Strip a leading UTF-8 BOM (Excel/Sheets add one) so it doesn't
@@ -200,8 +226,8 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
                     ExportFormat.JSON -> CellarExporter.toJson(wines)
                 }
             }
-            // Timestamped so rapid re-exports never write the same file concurrently.
-            val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+            // Millisecond-stamped so rapid re-exports never write the same file.
+            val stamp = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date())
             val fileName = "wine_cellar_$stamp.${format.extension}"
             val uri = ExportUtils.writeExport(getApplication(), fileName, content)
             onReady(uri, format.mimeType)

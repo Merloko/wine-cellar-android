@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Privacy-first: no INTERNET permission is declared. The app cannot
-         reach the network. All data lives in an on-device SQLite database. -->
+    <!-- Offline-first: all cellar data lives in an on-device SQLite database and
+         never leaves the device. INTERNET is declared for ONE opt-in feature —
+         the user-triggered "Look up online" barcode lookup — and is used nowhere
+         else. Nothing is uploaded; the lookup sends only the scanned barcode. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Camera is used only for on-device barcode scanning; it is optional. -->
     <uses-permission android:name="android.permission.CAMERA" />
