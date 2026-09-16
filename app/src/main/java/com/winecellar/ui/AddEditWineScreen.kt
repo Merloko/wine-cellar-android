@@ -35,8 +35,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.winecellar.R
 import com.winecellar.data.Wine
 
 private val COMMON_LOCATIONS = listOf("Cellar", "Fridge", "Front Fridge", "Downstairs Fridge")
@@ -95,15 +97,15 @@ fun AddEditWineScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (isNew) "Add wine" else "Edit wine") },
+                title = { Text(stringResource(if (isNew) R.string.title_add_wine else R.string.title_edit_wine)) },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(Icons.Filled.Close, contentDescription = "Cancel")
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_cancel))
                     }
                 },
                 actions = {
                     IconButton(onClick = { onSave(buildWine()) }, enabled = canSave) {
-                        Icon(Icons.Filled.Check, contentDescription = "Save")
+                        Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.action_save))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -123,45 +125,45 @@ fun AddEditWineScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SectionLabel("Wine")
-            Field(winery, { winery = it }, "Winery / vineyard *", isError = winery.isBlank())
-            Field(name, { name = it }, "Cuvée / name (optional)")
-            Field(grape, { grape = it }, "Grape / type", supporting = "Separate a blend with ;")
+            SectionLabel(stringResource(R.string.section_wine))
+            Field(winery, { winery = it }, stringResource(R.string.field_winery), isError = winery.isBlank())
+            Field(name, { name = it }, stringResource(R.string.field_name))
+            Field(grape, { grape = it }, stringResource(R.string.field_grape), supporting = stringResource(R.string.field_grape_help))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Field(vintage, { vintage = it }, "Vintage year", Modifier.weight(1f), number = true, supporting = "Blank = NV")
-                Field(quantity, { quantity = it }, "Bottles", Modifier.weight(1f), number = true)
+                Field(vintage, { vintage = it }, stringResource(R.string.field_vintage), Modifier.weight(1f), number = true, supporting = stringResource(R.string.field_vintage_help))
+                Field(quantity, { quantity = it }, stringResource(R.string.field_bottles), Modifier.weight(1f), number = true)
             }
 
-            SectionLabel("Where it lives")
-            SuggestField(location, { location = it }, "Location", COMMON_LOCATIONS + knownLocations)
-            SuggestField(shelf, { shelf = it }, "Shelf", COMMON_SHELVES)
+            SectionLabel(stringResource(R.string.section_where))
+            SuggestField(location, { location = it }, stringResource(R.string.field_location), COMMON_LOCATIONS + knownLocations)
+            SuggestField(shelf, { shelf = it }, stringResource(R.string.field_shelf), COMMON_SHELVES)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Field(rackColumn, { rackColumn = it }, "Rack column", Modifier.weight(1f), number = true)
-                Field(rackRow, { rackRow = it }, "Rack row", Modifier.weight(1f), number = true)
+                Field(rackColumn, { rackColumn = it }, stringResource(R.string.field_rack_column), Modifier.weight(1f), number = true)
+                Field(rackRow, { rackRow = it }, stringResource(R.string.field_rack_row), Modifier.weight(1f), number = true)
             }
 
-            SectionLabel("Origin")
+            SectionLabel(stringResource(R.string.section_origin))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Field(country, { country = it }, "Country", Modifier.weight(1f))
-                Field(region, { region = it }, "Region", Modifier.weight(1f))
+                Field(country, { country = it }, stringResource(R.string.field_country), Modifier.weight(1f))
+                Field(region, { region = it }, stringResource(R.string.field_region), Modifier.weight(1f))
             }
 
-            SectionLabel("Drinking window (optional)")
+            SectionLabel(stringResource(R.string.section_drink_window))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Field(drinkFrom, { drinkFrom = it }, "Drink from", Modifier.weight(1f), number = true)
-                Field(drinkTo, { drinkTo = it }, "Drink to", Modifier.weight(1f), number = true)
+                Field(drinkFrom, { drinkFrom = it }, stringResource(R.string.field_drink_from), Modifier.weight(1f), number = true)
+                Field(drinkTo, { drinkTo = it }, stringResource(R.string.field_drink_to), Modifier.weight(1f), number = true)
             }
             Text(
-                "Leave blank to let the app estimate from the grape and vintage.",
+                stringResource(R.string.drink_window_help),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            SectionLabel("Extras")
-            Field(barcode, { barcode = it }, "Barcode", supporting = "Scanned automatically when you add via the scanner")
-            Field(notes, { notes = it }, "Notes", singleLine = false)
+            SectionLabel(stringResource(R.string.section_extras))
+            Field(barcode, { barcode = it }, stringResource(R.string.field_barcode), supporting = stringResource(R.string.field_barcode_help))
+            Field(notes, { notes = it }, stringResource(R.string.field_notes), singleLine = false)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Favourite", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.label_favourite), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(checked = favorite, onCheckedChange = { favorite = it })
             }
             Spacer(Modifier.width(4.dp))

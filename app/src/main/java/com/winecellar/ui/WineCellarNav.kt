@@ -2,10 +2,13 @@ package com.winecellar.ui
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -30,7 +33,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.winecellar.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -44,6 +49,7 @@ private object Routes {
     const val CELLAR = "cellar"
     const val DRINK_NOW = "drinkNow"
     const val HISTORY = "history"
+    const val STATS = "stats"
     const val SCAN = "scan"
     const val ADD = "add?barcode={barcode}"
     const val DETAIL = "detail/{id}"
@@ -92,6 +98,11 @@ fun WineCellarRoot(vm: WineViewModel = viewModel()) {
                 onDelete = vm::deleteLog,
                 contentPadding = padding,
             )
+        }
+
+        homeTab(Routes.STATS, nav) { padding ->
+            val stats by vm.stats.collectAsStateWithLifecycle()
+            StatsScreen(stats = stats, contentPadding = padding)
         }
 
         composable(Routes.DETAIL) { entry ->
@@ -170,6 +181,23 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
 
+    // Import: pick any file, then sniff CSV vs JSON by content.
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val appContext = context.applicationContext
+            vm.importFromUri(uri) { count ->
+                val msg = when (count) {
+                    null -> appContext.getString(R.string.import_failed)
+                    0 -> appContext.getString(R.string.import_empty)
+                    else -> appContext.resources.getQuantityString(R.plurals.import_success, count, count)
+                }
+                Toast.makeText(appContext, msg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     // The write runs on the ViewModel scope (survives navigation); launching the
     // share sheet is a quick synchronous call once the file's Uri is ready.
     fun export(format: ExportFormat) {
@@ -179,25 +207,32 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
         val appContext = context.applicationContext
         vm.requestExport(format) { uri, mime ->
             if (uri == null || !ExportUtils.launchShare(appContext, uri, mime)) {
-                Toast.makeText(appContext, "Couldn't export the cellar.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(appContext, appContext.getString(R.string.export_failed), Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     IconButton(onClick = { nav.navigate(Routes.SCAN) }) {
-        Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan barcode")
+        Icon(Icons.Filled.QrCodeScanner, contentDescription = stringResource(R.string.action_scan_barcode))
     }
     IconButton(onClick = { menu = true }) {
-        Icon(Icons.Filled.MoreVert, contentDescription = "More")
+        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
     }
     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
         DropdownMenuItem(
-            text = { Text("Export as CSV") },
+            text = { Text(stringResource(R.string.action_export_csv)) },
             onClick = { export(ExportFormat.CSV) },
         )
         DropdownMenuItem(
-            text = { Text("Export as JSON") },
+            text = { Text(stringResource(R.string.action_export_json)) },
             onClick = { export(ExportFormat.JSON) },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.action_import)) },
+            onClick = {
+                menu = false
+                importLauncher.launch(arrayOf("*/*"))
+            },
         )
     }
 }
@@ -227,7 +262,7 @@ private fun HomeScaffold(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(titleFor(currentRoute)) },
+                title = { Text(stringResource(titleFor(currentRoute))) },
                 actions = actions,
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
@@ -242,26 +277,32 @@ private fun HomeScaffold(
                     selected = currentRoute == Routes.CELLAR,
                     onClick = { navigateTab(nav, Routes.CELLAR) },
                     icon = { Icon(Icons.Filled.WineBar, contentDescription = null) },
-                    label = { Text("Cellar") },
+                    label = { Text(stringResource(R.string.tab_cellar)) },
                 )
                 NavigationBarItem(
                     selected = currentRoute == Routes.DRINK_NOW,
                     onClick = { navigateTab(nav, Routes.DRINK_NOW) },
                     icon = { Icon(Icons.Outlined.Schedule, contentDescription = null) },
-                    label = { Text("Drink Now") },
+                    label = { Text(stringResource(R.string.tab_drink_now)) },
                 )
                 NavigationBarItem(
                     selected = currentRoute == Routes.HISTORY,
                     onClick = { navigateTab(nav, Routes.HISTORY) },
                     icon = { Icon(Icons.Filled.History, contentDescription = null) },
-                    label = { Text("History") },
+                    label = { Text(stringResource(R.string.tab_history)) },
+                )
+                NavigationBarItem(
+                    selected = currentRoute == Routes.STATS,
+                    onClick = { navigateTab(nav, Routes.STATS) },
+                    icon = { Icon(Icons.Filled.BarChart, contentDescription = null) },
+                    label = { Text(stringResource(R.string.tab_stats)) },
                 )
             }
         },
         floatingActionButton = {
             if (showFab) {
                 FloatingActionButton(onClick = { nav.navigate(Routes.add()) }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add wine")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_add_wine))
                 }
             }
         },
@@ -269,10 +310,12 @@ private fun HomeScaffold(
     )
 }
 
-private fun titleFor(route: String): String = when (route) {
-    Routes.DRINK_NOW -> "Drink Now"
-    Routes.HISTORY -> "History"
-    else -> "Wine Cellar"
+@androidx.annotation.StringRes
+private fun titleFor(route: String): Int = when (route) {
+    Routes.DRINK_NOW -> R.string.tab_drink_now
+    Routes.HISTORY -> R.string.tab_history
+    Routes.STATS -> R.string.tab_stats
+    else -> R.string.app_name
 }
 
 private fun navigateTab(nav: NavHostController, route: String) {

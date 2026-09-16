@@ -26,9 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.winecellar.R
 import com.winecellar.data.Wine
 import com.winecellar.domain.DrinkWindowCalculator
 import com.winecellar.domain.WineStyle
@@ -93,7 +95,7 @@ fun WineListItem(
                         Spacer(Modifier.width(4.dp))
                         Icon(
                             Icons.Filled.Star,
-                            contentDescription = "Favourite",
+                            contentDescription = stringResource(R.string.cd_favourite),
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(16.dp),
                         )
@@ -113,7 +115,7 @@ fun WineListItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    StatusChip(text = status.label, color = status.color)
+                    StatusChip(text = stringResource(status.labelRes), color = status.color)
                     wine.locationSummary?.let {
                         Text(
                             text = it,
@@ -135,7 +137,7 @@ fun WineListItem(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "×${wine.quantity}",
+                        text = stringResource(R.string.qty_badge, wine.quantity),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )

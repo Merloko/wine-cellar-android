@@ -1,3 +1,172 @@
 <resources>
     <string name="app_name">Wine Cellar</string>
+
+    <!-- Bottom navigation -->
+    <string name="tab_cellar">Cellar</string>
+    <string name="tab_drink_now">Drink Now</string>
+    <string name="tab_history">History</string>
+    <string name="tab_stats">Stats</string>
+
+    <!-- Top-bar actions -->
+    <string name="action_add_wine">Add wine</string>
+    <string name="action_scan_barcode">Scan barcode</string>
+    <string name="action_more">More</string>
+    <string name="action_export_csv">Export as CSV</string>
+    <string name="action_export_json">Export as JSON</string>
+    <string name="action_import">Import CSV / JSON…</string>
+    <string name="export_subject">Wine cellar export</string>
+    <string name="export_chooser_title">Export cellar</string>
+
+    <!-- Export / import feedback -->
+    <string name="export_failed">Couldn\'t export the cellar.</string>
+    <string name="import_failed">Couldn\'t import that file.</string>
+    <string name="import_empty">No wines found in that file.</string>
+    <plurals name="import_success">
+        <item quantity="one">Imported %d wine.</item>
+        <item quantity="other">Imported %d wines.</item>
+    </plurals>
+
+    <!-- Cellar screen -->
+    <string name="search_placeholder">Search winery, grape, year, region…</string>
+    <string name="action_clear_search">Clear search</string>
+    <string name="filter_location">Location</string>
+    <string name="filter_style">Style</string>
+    <string name="filter_winery">Winery</string>
+    <string name="filter_all">All</string>
+    <string name="action_sort">Sort</string>
+    <string name="action_clear_filters">Clear filters</string>
+    <string name="cellar_count">%1$d of %2$d bottles</string>
+    <string name="empty_no_match">No wines match your search.</string>
+    <string name="empty_cellar">Your cellar is empty.\nTap + to add your first wine.</string>
+
+    <!-- Sort orders -->
+    <string name="sort_winery">Winery A–Z</string>
+    <string name="sort_vintage_newest">Vintage: newest</string>
+    <string name="sort_vintage_oldest">Vintage: oldest</string>
+    <string name="sort_recently_added">Recently added</string>
+    <string name="sort_drink_urgency">Drink urgency</string>
+
+    <!-- Wine styles -->
+    <string name="style_sparkling">Sparkling</string>
+    <string name="style_white">White</string>
+    <string name="style_rose">Rosé</string>
+    <string name="style_red_light">Light red</string>
+    <string name="style_red_medium">Medium red</string>
+    <string name="style_red_bold">Bold red</string>
+    <string name="style_unknown">Wine</string>
+
+    <!-- Drink status -->
+    <string name="status_past_peak">Drink up</string>
+    <string name="status_ready">Drink now</string>
+    <string name="status_cellaring">Cellaring</string>
+    <string name="status_unknown">—</string>
+
+    <!-- Drink Now screen -->
+    <string name="drinknow_empty">Nothing is calling out to be drunk just yet.\nEverything is either cellaring or already enjoyed.</string>
+    <string name="drinknow_past_title">Drink up — past their peak</string>
+    <string name="drinknow_past_sub">These are at or past the end of their window</string>
+    <string name="drinknow_ready_title">Ready to drink now</string>
+    <string name="drinknow_ready_sub">In their ideal window</string>
+    <string name="drinknow_soon_title">Coming up next year</string>
+    <string name="drinknow_soon_sub">Almost ready — worth keeping an eye on</string>
+
+    <!-- History screen -->
+    <string name="history_empty">No bottles logged yet.\nOpen a wine and tap \"Drink a bottle\" to start your history.</string>
+    <plurals name="history_count">
+        <item quantity="one">%d bottle enjoyed</item>
+        <item quantity="other">%d bottles enjoyed</item>
+    </plurals>
+    <string name="action_delete_entry">Delete entry</string>
+
+    <!-- Wine list item -->
+    <string name="cd_favourite">Favourite</string>
+    <string name="qty_badge">×%d</string>
+
+    <!-- Add / edit wine -->
+    <string name="title_add_wine">Add wine</string>
+    <string name="title_edit_wine">Edit wine</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="section_wine">Wine</string>
+    <string name="section_where">Where it lives</string>
+    <string name="section_origin">Origin</string>
+    <string name="section_drink_window">Drinking window (optional)</string>
+    <string name="section_extras">Extras</string>
+    <string name="field_winery">Winery / vineyard *</string>
+    <string name="field_name">Cuvée / name (optional)</string>
+    <string name="field_grape">Grape / type</string>
+    <string name="field_grape_help">Separate a blend with ;</string>
+    <string name="field_vintage">Vintage year</string>
+    <string name="field_vintage_help">Blank = NV</string>
+    <string name="field_bottles">Bottles</string>
+    <string name="field_location">Location</string>
+    <string name="field_shelf">Shelf</string>
+    <string name="field_rack_column">Rack column</string>
+    <string name="field_rack_row">Rack row</string>
+    <string name="field_country">Country</string>
+    <string name="field_region">Region</string>
+    <string name="field_drink_from">Drink from</string>
+    <string name="field_drink_to">Drink to</string>
+    <string name="drink_window_help">Leave blank to let the app estimate from the grape and vintage.</string>
+    <string name="field_barcode">Barcode</string>
+    <string name="field_barcode_help">Scanned automatically when you add via the scanner</string>
+    <string name="field_notes">Notes</string>
+    <string name="label_favourite">Favourite</string>
+
+    <!-- Wine detail -->
+    <string name="title_wine_details">Wine details</string>
+    <string name="action_back">Back</string>
+    <string name="action_unfavourite">Unfavourite</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="wine_not_found">Wine not found.</string>
+    <string name="action_drink_bottle">Drink a bottle  (%d left)</string>
+    <string name="no_bottles_left">No bottles left in the cellar.</string>
+    <string name="detail_where">Where it is</string>
+    <string name="detail_no_location">No location recorded yet</string>
+    <string name="detail_details">Details</string>
+    <string name="detail_winery">Winery</string>
+    <string name="detail_vintage">Vintage</string>
+    <string name="detail_non_vintage">Non-vintage</string>
+    <string name="detail_name">Cuvée / name</string>
+    <string name="detail_grape">Grape / type</string>
+    <string name="detail_style">Style</string>
+    <string name="detail_origin">Origin</string>
+    <string name="detail_bottles">Bottles</string>
+    <string name="detail_barcode">Barcode</string>
+    <string name="detail_drink_window">Drinking window</string>
+    <string name="detail_best">Best</string>
+    <string name="detail_status">Status</string>
+    <string name="detail_source">Source</string>
+    <string name="source_estimated">Estimated from style &amp; vintage</string>
+    <string name="source_recorded">Recorded for this bottle</string>
+    <string name="detail_note">Note</string>
+    <string name="detail_notes">Notes</string>
+    <string name="dialog_delete_title">Delete wine?</string>
+    <string name="dialog_delete_msg">Remove \"%s\" from your cellar? This can\'t be undone.</string>
+    <string name="dialog_drink_title">Drink a bottle</string>
+    <string name="dialog_rate">Rate it (optional)</string>
+    <string name="cd_star">%d star</string>
+    <string name="field_tasting_note">Tasting note (optional)</string>
+    <string name="action_log_it">Log it</string>
+
+    <!-- Scan screen -->
+    <string name="title_scan">Scan a barcode</string>
+    <string name="scan_hint">Point the camera at the bottle\'s barcode</string>
+    <string name="scan_permission_rationale">Camera access is needed to scan barcodes.</string>
+    <string name="action_grant_camera">Grant camera access</string>
+
+    <!-- Stats screen -->
+    <string name="stats_empty">No wines yet — add some to see your cellar stats.</string>
+    <string name="stats_bottles">Bottles</string>
+    <string name="stats_distinct">Different wines</string>
+    <string name="stats_ready_section">Ready to drink</string>
+    <string name="stats_now">Now</string>
+    <string name="stats_cellaring">Cellaring</string>
+    <string name="stats_past">Past peak</string>
+    <string name="stats_vintage_range">Vintage range</string>
+    <string name="stats_by_style">By style</string>
+    <string name="stats_by_country">By country</string>
+    <string name="stats_top_wineries">Top wineries</string>
+    <string name="stats_section_count">%1$s  (%2$d)</string>
 </resources>

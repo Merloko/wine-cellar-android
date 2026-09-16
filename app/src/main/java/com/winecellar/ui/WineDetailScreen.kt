@@ -39,8 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.winecellar.R
 import com.winecellar.data.Wine
 import com.winecellar.domain.DrinkWindowCalculator
 import com.winecellar.domain.WineStyle
@@ -62,26 +64,26 @@ fun WineDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Wine details") },
+                title = { Text(stringResource(R.string.title_wine_details)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 actions = {
                     if (wine != null) {
                         IconButton(onClick = { onToggleFavorite(wine) }) {
                             if (wine.favorite) {
-                                Icon(Icons.Filled.Star, contentDescription = "Unfavourite")
+                                Icon(Icons.Filled.Star, contentDescription = stringResource(R.string.action_unfavourite))
                             } else {
-                                Icon(Icons.Filled.StarBorder, contentDescription = "Favourite")
+                                Icon(Icons.Filled.StarBorder, contentDescription = stringResource(R.string.cd_favourite))
                             }
                         }
                         IconButton(onClick = onEdit) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.action_edit))
                         }
                         IconButton(onClick = { confirmDelete = true }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.action_delete))
                         }
                     }
                 },
@@ -97,7 +99,7 @@ fun WineDetailScreen(
         if (wine == null) {
             Column(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.Center) {
                 Text(
-                    "Wine not found.",
+                    stringResource(R.string.wine_not_found),
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -126,8 +128,8 @@ fun WineDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    StatusChip(text = style.label, color = style.accentColor())
-                    StatusChip(text = status.label, color = status.color)
+                    StatusChip(text = stringResource(style.labelRes()), color = style.accentColor())
+                    StatusChip(text = stringResource(status.labelRes), color = status.color)
                 }
             }
 
@@ -139,11 +141,11 @@ fun WineDetailScreen(
                 ) {
                     Icon(Icons.Filled.LocalBar, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Drink a bottle  (${wine.quantity} left)")
+                    Text(stringResource(R.string.action_drink_bottle, wine.quantity))
                 }
             } else {
                 Text(
-                    "No bottles left in the cellar.",
+                    stringResource(R.string.no_bottles_left),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -158,11 +160,11 @@ fun WineDetailScreen(
                         tint = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Where it is", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.detail_where), style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text = wine.locationSummary ?: "No location recorded yet",
+                    text = wine.locationSummary ?: stringResource(R.string.detail_no_location),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
@@ -172,32 +174,32 @@ fun WineDetailScreen(
 
             // Details
             InfoCard {
-                Text("Details", style = MaterialTheme.typography.titleMedium)
-                DetailRow("Winery", wine.winery)
-                DetailRow("Vintage", wine.vintage?.toString() ?: "Non-vintage")
-                wine.name?.let { DetailRow("Cuvée / name", it) }
-                wine.grapeType?.let { DetailRow("Grape / type", it.replace(";", ", ")) }
-                DetailRow("Style", style.label)
-                wine.originSummary?.let { DetailRow("Origin", it) }
-                DetailRow("Bottles", wine.quantity.toString())
-                wine.barcode?.let { DetailRow("Barcode", it) }
+                Text(stringResource(R.string.detail_details), style = MaterialTheme.typography.titleMedium)
+                DetailRow(stringResource(R.string.detail_winery), wine.winery)
+                DetailRow(stringResource(R.string.detail_vintage), wine.vintage?.toString() ?: stringResource(R.string.detail_non_vintage))
+                wine.name?.let { DetailRow(stringResource(R.string.detail_name), it) }
+                wine.grapeType?.let { DetailRow(stringResource(R.string.detail_grape), it.replace(";", ", ")) }
+                DetailRow(stringResource(R.string.detail_style), stringResource(style.labelRes()))
+                wine.originSummary?.let { DetailRow(stringResource(R.string.detail_origin), it) }
+                DetailRow(stringResource(R.string.detail_bottles), wine.quantity.toString())
+                wine.barcode?.let { DetailRow(stringResource(R.string.detail_barcode), it) }
             }
 
             // Drinking window
             InfoCard {
-                Text("Drinking window", style = MaterialTheme.typography.titleMedium)
-                DetailRow("Best", window.label() ?: "—")
-                DetailRow("Status", status.label)
+                Text(stringResource(R.string.detail_drink_window), style = MaterialTheme.typography.titleMedium)
+                DetailRow(stringResource(R.string.detail_best), window.label() ?: stringResource(R.string.status_unknown))
+                DetailRow(stringResource(R.string.detail_status), stringResource(status.labelRes))
                 DetailRow(
-                    "Source",
-                    if (window.estimated) "Estimated from style & vintage" else "Recorded for this bottle",
+                    stringResource(R.string.detail_source),
+                    stringResource(if (window.estimated) R.string.source_estimated else R.string.source_recorded),
                 )
-                wine.drinkWindowNote?.let { DetailRow("Note", it) }
+                wine.drinkWindowNote?.let { DetailRow(stringResource(R.string.detail_note), it) }
             }
 
             wine.notes?.takeIf { it.isNotBlank() }?.let {
                 InfoCard {
-                    Text("Notes", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.detail_notes), style = MaterialTheme.typography.titleMedium)
                     Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp))
                 }
             }
@@ -207,13 +209,13 @@ fun WineDetailScreen(
     if (confirmDelete && wine != null) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete wine?") },
-            text = { Text("Remove \"${wine.displayTitle}\" from your cellar? This can't be undone.") },
+            title = { Text(stringResource(R.string.dialog_delete_title)) },
+            text = { Text(stringResource(R.string.dialog_delete_msg, wine.displayTitle)) },
             confirmButton = {
-                TextButton(onClick = { confirmDelete = false; onDelete(wine) }) { Text("Delete") }
+                TextButton(onClick = { confirmDelete = false; onDelete(wine) }) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
@@ -240,17 +242,17 @@ private fun DrinkDialog(
     var note by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Drink a bottle") },
+        title = { Text(stringResource(R.string.dialog_drink_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium)
-                Text("Rate it (optional)", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.dialog_rate), style = MaterialTheme.typography.labelLarge)
                 Row {
                     (1..5).forEach { star ->
                         IconButton(onClick = { rating = if (rating == star) 0 else star }) {
                             Icon(
                                 if (star <= rating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                                contentDescription = "$star star",
+                                contentDescription = stringResource(R.string.cd_star, star),
                                 tint = MaterialTheme.colorScheme.secondary,
                             )
                         }
@@ -259,16 +261,16 @@ private fun DrinkDialog(
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("Tasting note (optional)") },
+                    label = { Text(stringResource(R.string.field_tasting_note)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(rating.takeIf { it > 0 }, note) }) { Text("Log it") }
+            TextButton(onClick = { onConfirm(rating.takeIf { it > 0 }, note) }) { Text(stringResource(R.string.action_log_it)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

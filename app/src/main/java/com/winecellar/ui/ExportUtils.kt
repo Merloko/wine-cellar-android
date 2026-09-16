@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
+import com.winecellar.R
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,10 +40,10 @@ object ExportUtils {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Wine cellar export")
+            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.export_subject))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        val chooser = Intent.createChooser(intent, "Export cellar")
+        val chooser = Intent.createChooser(intent, context.getString(R.string.export_chooser_title))
             .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
         return try {
             context.startActivity(chooser)

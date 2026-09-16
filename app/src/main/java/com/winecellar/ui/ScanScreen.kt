@@ -38,9 +38,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.winecellar.R
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -72,10 +74,10 @@ fun ScanScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan a barcode") },
+                title = { Text(stringResource(R.string.title_scan)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -90,7 +92,7 @@ fun ScanScreen(
             if (granted) {
                 BarcodeCamera(onBarcode = onBarcode)
                 Text(
-                    text = "Point the camera at the bottle's barcode",
+                    text = stringResource(R.string.scan_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier
@@ -104,12 +106,12 @@ fun ScanScreen(
                     modifier = Modifier.padding(32.dp),
                 ) {
                     Text(
-                        "Camera access is needed to scan barcodes.",
+                        stringResource(R.string.scan_permission_rationale),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
                     )
                     Button(onClick = { launcher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant camera access")
+                        Text(stringResource(R.string.action_grant_camera))
                     }
                 }
             }

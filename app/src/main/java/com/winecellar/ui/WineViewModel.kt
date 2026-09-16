@@ -2,19 +2,24 @@ package com.winecellar.ui
 
 import android.app.Application
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winecellar.WineCellarApp
 import com.winecellar.data.CellarExporter
+import com.winecellar.data.CellarImporter
 import com.winecellar.data.DrinkLog
 import com.winecellar.data.Wine
 import com.winecellar.data.WineRepository
+import com.winecellar.domain.CellarStats
+import com.winecellar.domain.CellarStatsCalculator
 import com.winecellar.domain.DrinkStatus
 import com.winecellar.domain.DrinkWindowCalculator
 import com.winecellar.domain.FilterState
 import com.winecellar.domain.SortOrder
 import com.winecellar.domain.WineFilters
 import com.winecellar.domain.WineStyle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.time.Year
 import java.util.Date
@@ -42,6 +48,9 @@ enum class ExportFormat(val extension: String, val mimeType: String) {
     CSV("csv", "text/csv"),
     JSON("json", "application/json"),
 }
+
+/** Import files larger than this are rejected to avoid OOM on an unexpected pick. */
+private const val MAX_IMPORT_BYTES = 10L * 1024 * 1024
 
 /** Buckets for the "what to drink now" screen. */
 data class DrinkNowState(
@@ -106,6 +115,10 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
     val history: StateFlow<List<DrinkLog>> =
         repository.drinkLog.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val stats: StateFlow<CellarStats> =
+        repository.wines.map { CellarStatsCalculator.compute(it, currentYearNow()) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CellarStats())
+
     fun wine(id: Long) = repository.wine(id)
 
     fun currentYear(): Int = currentYearNow()
@@ -126,6 +139,51 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { onResult(repository.findByBarcode(barcode)) }
     }
 
+    // ---- import -----------------------------------------------------------
+
+    /**
+     * Read the file at [uri], detect CSV vs JSON by content, parse, and append
+     * the wines. [onResult] runs on the main thread with the number imported,
+     * or null if the file couldn't be read/parsed.
+     */
+    fun importFromUri(uri: Uri, onResult: (count: Int?) -> Unit) {
+        viewModelScope.launch {
+            val result: Int? = try {
+                val raw = withContext(Dispatchers.IO) {
+                    val resolver = getApplication<Application>().contentResolver
+                    val size = resolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)
+                        ?.use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else -1L } ?: -1L
+                    if (size > MAX_IMPORT_BYTES) {
+                        null
+                    } else {
+                        resolver.openInputStream(uri)?.use { it.bufferedReader().readText() }
+                    }
+                }
+                // Strip a leading UTF-8 BOM (Excel/Sheets add one) so it doesn't
+                // break format detection or the first CSV header cell.
+                val text = raw?.removePrefix("﻿")
+                if (text.isNullOrBlank()) {
+                    null
+                } else {
+                    val wines = withContext(Dispatchers.Default) {
+                        // Our JSON export is always a top-level array.
+                        if (text.trimStart().startsWith("[")) {
+                            CellarImporter.parseJson(text)
+                        } else {
+                            CellarImporter.parseCsv(text)
+                        }
+                    }
+                    repository.importWines(wines)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            onResult(result)
+        }
+    }
+
     // ---- export -----------------------------------------------------------
 
     /**
@@ -136,9 +194,11 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
     fun requestExport(format: ExportFormat, onReady: (uri: Uri?, mimeType: String) -> Unit) {
         viewModelScope.launch {
             val wines = repository.allWinesOnce()
-            val content = when (format) {
-                ExportFormat.CSV -> CellarExporter.toCsv(wines)
-                ExportFormat.JSON -> CellarExporter.toJson(wines)
+            val content = withContext(Dispatchers.Default) {
+                when (format) {
+                    ExportFormat.CSV -> CellarExporter.toCsv(wines)
+                    ExportFormat.JSON -> CellarExporter.toJson(wines)
+                }
             }
             // Timestamped so rapid re-exports never write the same file concurrently.
             val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
