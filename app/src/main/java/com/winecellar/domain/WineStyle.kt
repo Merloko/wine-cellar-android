@@ -9,17 +9,16 @@ package com.winecellar.domain
  * explicit drinking window on the bottle.
  */
 enum class WineStyle(
-    val label: String,
     val minYearsAfterVintage: Int,
     val maxYearsAfterVintage: Int,
 ) {
-    SPARKLING("Sparkling", 0, 6),
-    WHITE("White", 0, 3),
-    ROSE("Rosé", 0, 2),
-    RED_LIGHT("Light red", 1, 6),
-    RED_MEDIUM("Medium red", 2, 10),
-    RED_BOLD("Bold red", 3, 15),
-    UNKNOWN("Wine", 0, 8);
+    SPARKLING(0, 6),
+    WHITE(0, 3),
+    ROSE(0, 2),
+    RED_LIGHT(1, 6),
+    RED_MEDIUM(2, 10),
+    RED_BOLD(3, 15),
+    UNKNOWN(0, 8);
 
     companion object {
         /** Classify a grape/type string (e.g. "Grenache;Syrah;Mataro"). */

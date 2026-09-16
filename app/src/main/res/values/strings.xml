@@ -14,6 +14,8 @@
     <string name="action_export_csv">Export as CSV</string>
     <string name="action_export_json">Export as JSON</string>
     <string name="action_import">Import CSV / JSON…</string>
+    <string name="export_subject">Wine cellar export</string>
+    <string name="export_chooser_title">Export cellar</string>
 
     <!-- Export / import feedback -->
     <string name="export_failed">Couldn\'t export the cellar.</string>

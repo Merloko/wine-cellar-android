@@ -2,12 +2,12 @@ package com.winecellar.domain
 
 import com.winecellar.data.Wine
 
-enum class SortOrder(val label: String) {
-    WINERY("Winery A–Z"),
-    VINTAGE_NEWEST("Vintage: newest"),
-    VINTAGE_OLDEST("Vintage: oldest"),
-    RECENTLY_ADDED("Recently added"),
-    DRINK_URGENCY("Drink urgency"),
+enum class SortOrder {
+    WINERY,
+    VINTAGE_NEWEST,
+    VINTAGE_OLDEST,
+    RECENTLY_ADDED,
+    DRINK_URGENCY,
 }
 
 /** The current search / filter / sort selection for the cellar list. */

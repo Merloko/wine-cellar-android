@@ -145,16 +145,19 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
     fun importFromUri(uri: Uri, onResult: (count: Int?) -> Unit) {
         viewModelScope.launch {
             val result: Int? = try {
-                val text = withContext(Dispatchers.IO) {
+                val raw = withContext(Dispatchers.IO) {
                     getApplication<Application>().contentResolver.openInputStream(uri)
                         ?.use { it.bufferedReader().readText() }
                 }
+                // Strip a leading UTF-8 BOM (Excel/Sheets add one) so it doesn't
+                // break format detection or the first CSV header cell.
+                val text = raw?.removePrefix("﻿")
                 if (text.isNullOrBlank()) {
                     null
                 } else {
                     val wines = withContext(Dispatchers.Default) {
-                        val head = text.trimStart()
-                        if (head.startsWith("[") || head.startsWith("{")) {
+                        // Our JSON export is always a top-level array.
+                        if (text.trimStart().startsWith("[")) {
                             CellarImporter.parseJson(text)
                         } else {
                             CellarImporter.parseCsv(text)

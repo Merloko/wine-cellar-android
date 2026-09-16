@@ -26,8 +26,10 @@ object SeedLoader {
         val out = ArrayList<Wine>(arr.length())
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
+            // A row without a winery is skipped (matches CSV import).
+            val winery = o.stringOrNull("winery") ?: continue
             out += Wine(
-                winery = o.optString("winery", "Unknown").ifBlank { "Unknown" },
+                winery = winery,
                 vintage = o.intOrNull("vintage"),
                 name = o.stringOrNull("name"),
                 grapeType = o.stringOrNull("grapeType"),
@@ -37,7 +39,7 @@ object SeedLoader {
                 rackRow = o.intOrNull("rackRow"),
                 country = o.stringOrNull("country"),
                 region = o.stringOrNull("region"),
-                quantity = o.intOrNull("quantity") ?: 1,
+                quantity = (o.intOrNull("quantity") ?: 1).coerceAtLeast(1),
                 drinkFrom = o.intOrNull("drinkFrom"),
                 drinkTo = o.intOrNull("drinkTo"),
                 drinkWindowNote = o.stringOrNull("drinkWindowNote"),
