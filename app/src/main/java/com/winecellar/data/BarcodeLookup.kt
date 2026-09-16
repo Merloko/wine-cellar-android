@@ -4,13 +4,16 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** What a barcode lookup could fill in on the add/edit form. */
+/**
+ * What a barcode lookup could fill in on the add/edit form. Country is
+ * deliberately omitted: Open Food Facts' `countries` is where a product is
+ * *sold*, not its origin, so it would write misleading data.
+ */
 data class WineLookupResult(
     val winery: String? = null,
     val name: String? = null,
-    val country: String? = null,
 ) {
-    val isEmpty: Boolean get() = winery.isNullOrBlank() && name.isNullOrBlank() && country.isNullOrBlank()
+    val isEmpty: Boolean get() = winery.isNullOrBlank() && name.isNullOrBlank()
 }
 
 /** Outcome of an online barcode lookup, so the UI can tell apart the three cases. */
@@ -36,7 +39,7 @@ object BarcodeLookup {
         if (code.isEmpty()) return LookupOutcome.NotFound
         val url = URL(
             "https://world.openfoodfacts.org/api/v2/product/$code.json" +
-                "?fields=product_name,brands,countries",
+                "?fields=product_name,brands",
         )
         val conn = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
@@ -68,12 +71,11 @@ object BarcodeLookup {
         fun field(key: String): String? =
             product.optString(key, "").trim().ifBlank { null }
 
-        // "brands" and "countries" are comma-separated lists; take the first.
+        // "brands" is a comma-separated list; take the first as the winery.
         val winery = field("brands")?.substringBefore(",")?.trim()?.ifBlank { null }
-        val country = field("countries")?.substringBefore(",")?.trim()?.ifBlank { null }
         val name = field("product_name")
 
-        val result = WineLookupResult(winery = winery, name = name, country = country)
+        val result = WineLookupResult(winery = winery, name = name)
         return if (result.isEmpty) null else result
     }
 }

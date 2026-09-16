@@ -80,7 +80,10 @@ fun AddEditWineScreen(
     var notes by rememberSaveable { mutableStateOf(initial?.notes ?: "") }
     var barcode by rememberSaveable { mutableStateOf(initial?.barcode ?: initialBarcode ?: "") }
     var favorite by rememberSaveable { mutableStateOf(initial?.favorite ?: false) }
-    var lookingUp by rememberSaveable { mutableStateOf(false) }
+    // Transient (not rememberSaveable): a config change mid-lookup clears the
+    // spinner rather than stranding it, since the callback is tied to this
+    // composition.
+    var lookingUp by remember { mutableStateOf(false) }
 
     val canSave = winery.isNotBlank()
 
@@ -182,7 +185,6 @@ fun AddEditWineScreen(
                                 is LookupOutcome.Found -> {
                                     if (winery.isBlank()) outcome.result.winery?.let { winery = it }
                                     if (name.isBlank()) outcome.result.name?.let { name = it }
-                                    if (country.isBlank()) outcome.result.country?.let { country = it }
                                     Toast.makeText(appContext, appContext.getString(R.string.lookup_filled), Toast.LENGTH_SHORT).show()
                                 }
                                 LookupOutcome.NotFound ->

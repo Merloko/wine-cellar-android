@@ -10,7 +10,7 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class BarcodeLookupTest {
 
-    @Test fun parses_a_found_product_taking_first_brand_and_country() {
+    @Test fun parses_a_found_product_taking_the_first_brand() {
         val json = """
             {"status":1,"product":{
                 "product_name":"Grand Cordon Rosé",
@@ -21,7 +21,6 @@ class BarcodeLookupTest {
         val r = BarcodeLookup.parse(json)!!
         assertEquals("G.H. Mumm", r.winery)
         assertEquals("Grand Cordon Rosé", r.name)
-        assertEquals("France", r.country)
     }
 
     @Test fun returns_null_when_not_found() {
