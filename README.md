@@ -50,6 +50,27 @@ Each wine (`data/Wine.kt`) captures:
 | `drinkFrom`, `drinkTo`, `drinkWindowNote` | recorded drinking window |
 | `favorite`, `notes`, `dateAdded` | extras |
 
+## Drinking windows
+
+If a bottle has a recorded `drinkFrom`/`drinkTo`, that's used verbatim. Otherwise
+the window is estimated from the wine's style (guessed from the grape/type) and
+vintage — see `domain/WineStyle.kt` / `domain/DrinkWindow.kt`:
+
+| Style | Drink from → through (years after vintage) |
+|---|---|
+| Sparkling | 0 → 7 (non-vintage is treated as ready now) |
+| White | 0 → 3 |
+| Rosé | 0 → 2 |
+| Light red (Pinot Noir, Gamay) | 1 → 6 |
+| Medium red (GSM/Rhône blends, Grenache, Tempranillo, Merlot…) | 2 → 10 |
+| Bold red (Cabernet, Bordeaux blends, Shiraz, Nebbiolo…) | 3 → 18 |
+| Unknown | 0 → 8 |
+
+Classification favours a blend's most age-worthy component (a Cabernet blend is
+bold), with one exception: a Grenache-led Rhône blend stays medium even though it
+contains Syrah. These are deliberately broad defaults; record a window on a
+bottle to override the estimate.
+
 ## Architecture
 
 ```

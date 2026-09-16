@@ -25,6 +25,32 @@ class WineStyleTest {
     @Test fun medium_reds() {
         assertEquals(WineStyle.RED_MEDIUM, WineStyle.classify("Grenache;Tempranillo"))
         assertEquals(WineStyle.RED_MEDIUM, WineStyle.classify("Tempranillo"))
+        assertEquals(WineStyle.RED_MEDIUM, WineStyle.classify("Zinfandel"))
+    }
+
+    @Test fun gsm_blend_is_medium_not_bold() {
+        // Grenache-led Rhône blend: medium, even though it contains Syrah.
+        assertEquals(WineStyle.RED_MEDIUM, WineStyle.classify("Grenache;Syrah;Mataro"))
+        assertEquals(WineStyle.RED_MEDIUM, WineStyle.classify("Grenache;Syrah;Mourvedre"))
+    }
+
+    @Test fun straight_syrah_is_bold_but_bordeaux_blends_win() {
+        assertEquals(WineStyle.RED_BOLD, WineStyle.classify("Syrah"))
+        // A tannic component (Cabernet) sets a bold window even blended with Merlot.
+        assertEquals(WineStyle.RED_BOLD, WineStyle.classify("Cabernet Merlot"))
+        assertEquals(WineStyle.RED_BOLD, WineStyle.classify("Nebbiolo"))
+        assertEquals(WineStyle.RED_BOLD, WineStyle.classify(null, "Cab Franc"))
+    }
+
+    @Test fun a_red_named_rhapsody_is_not_a_rose() {
+        // "Rapsodhy in Red" is a red blend; it must not be caught as a rosé.
+        assertEquals(WineStyle.UNKNOWN, WineStyle.classify(null, "Rapsodhy in Red"))
+    }
+
+    @Test fun rose_is_matched_as_a_whole_word() {
+        // A substring "rose" inside another word must not force the Rosé style.
+        assertEquals(WineStyle.RED_BOLD, WineStyle.classify("Shiraz", "Primrose Hill"))
+        assertEquals(WineStyle.WHITE, WineStyle.classify("Sauvignon Blanc", "Rosewood Reserve"))
     }
 
     @Test fun whites() {
