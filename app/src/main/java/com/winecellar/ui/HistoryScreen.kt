@@ -23,8 +23,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.winecellar.R
 import com.winecellar.data.DrinkLog
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -39,7 +42,7 @@ fun HistoryScreen(
     if (history.isEmpty()) {
         Box(Modifier.fillMaxSize().padding(contentPadding), contentAlignment = Alignment.Center) {
             Text(
-                "No bottles logged yet.\nOpen a wine and tap \"Drink a bottle\" to start your history.",
+                stringResource(R.string.history_empty),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -56,7 +59,7 @@ fun HistoryScreen(
     ) {
         item {
             Text(
-                text = "${history.size} bottle${if (history.size == 1) "" else "s"} enjoyed",
+                text = pluralStringResource(R.plurals.history_count, history.size, history.size),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(vertical = 4.dp),
@@ -101,7 +104,7 @@ private fun HistoryRow(entry: DrinkLog, onDelete: (DrinkLog) -> Unit) {
                 }
             }
             IconButton(onClick = { onDelete(entry) }) {
-                Icon(Icons.Filled.DeleteOutline, contentDescription = "Delete entry")
+                Icon(Icons.Filled.DeleteOutline, contentDescription = stringResource(R.string.action_delete_entry))
             }
         }
     }

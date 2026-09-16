@@ -20,6 +20,13 @@ class WineRepository(
 
     suspend fun allWinesOnce(): List<Wine> = dao.getAllOnce()
 
+    /** Insert imported wines as new rows. Returns how many were added. */
+    suspend fun importWines(wines: List<Wine>): Int {
+        if (wines.isEmpty()) return 0
+        dao.insertAll(wines)
+        return wines.size
+    }
+
     suspend fun findByBarcode(barcode: String): Wine? = dao.findByBarcode(barcode)
 
     /**

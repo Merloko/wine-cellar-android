@@ -31,8 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.winecellar.R
 import com.winecellar.domain.FilterState
 import com.winecellar.domain.SortOrder
 import com.winecellar.domain.WineStyle
@@ -89,12 +91,12 @@ private fun SearchField(query: String, onQuery: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
-        placeholder = { Text("Search winery, grape, year, region…") },
+        placeholder = { Text(stringResource(R.string.search_placeholder)) },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQuery("") }) {
-                    Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+                    Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.action_clear_search))
                 }
             }
         },
@@ -119,22 +121,25 @@ private fun FilterRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Localised labels for every style (associateWith is inline, so the
+        // stringResource calls run in this composable's context).
+        val styleLabels = WineStyle.entries.associateWith { stringResource(it.labelRes()) }
         DropdownFilterChip(
-            label = state.filter.location ?: "Location",
+            label = state.filter.location ?: stringResource(R.string.filter_location),
             selected = state.filter.location != null,
             options = state.locations,
             optionLabel = { it },
             onSelect = onLocation,
         )
         DropdownFilterChip(
-            label = state.filter.style?.label ?: "Style",
+            label = state.filter.style?.let { styleLabels.getValue(it) } ?: stringResource(R.string.filter_style),
             selected = state.filter.style != null,
             options = state.styles,
-            optionLabel = { it.label },
+            optionLabel = { styleLabels.getValue(it) },
             onSelect = onStyle,
         )
         DropdownFilterChip(
-            label = state.filter.winery ?: "Winery",
+            label = state.filter.winery ?: stringResource(R.string.filter_winery),
             selected = state.filter.winery != null,
             options = state.wineries,
             optionLabel = { it },
@@ -149,12 +154,12 @@ private fun FilterRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "${state.wines.size} of ${state.totalBottles} bottles",
+                text = stringResource(R.string.cellar_count, state.wines.size, state.totalBottles),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Box(Modifier.weight(1f))
-            androidx.compose.material3.TextButton(onClick = onClearFilters) { Text("Clear filters") }
+            androidx.compose.material3.TextButton(onClick = onClearFilters) { Text(stringResource(R.string.action_clear_filters)) }
         }
     }
 }
@@ -178,7 +183,7 @@ private fun <T> DropdownFilterChip(
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("All") },
+                text = { Text(stringResource(R.string.filter_all)) },
                 onClick = { onSelect(null); expanded = false },
             )
             options.forEach { option ->
@@ -196,12 +201,12 @@ private fun SortMenu(current: SortOrder, onSort: (SortOrder) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.action_sort))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             SortOrder.entries.forEach { order ->
                 DropdownMenuItem(
-                    text = { Text(order.label) },
+                    text = { Text(stringResource(order.labelRes())) },
                     onClick = { onSort(order); expanded = false },
                     trailingIcon = {
                         if (order == current) Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
@@ -216,7 +221,7 @@ private fun SortMenu(current: SortOrder, onSort: (SortOrder) -> Unit) {
 private fun EmptyState(hasQuery: Boolean) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
-            text = if (hasQuery) "No wines match your search." else "Your cellar is empty.\nTap + to add your first wine.",
+            text = if (hasQuery) stringResource(R.string.empty_no_match) else stringResource(R.string.empty_cellar),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

@@ -6,15 +6,19 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winecellar.WineCellarApp
 import com.winecellar.data.CellarExporter
+import com.winecellar.data.CellarImporter
 import com.winecellar.data.DrinkLog
 import com.winecellar.data.Wine
 import com.winecellar.data.WineRepository
+import com.winecellar.domain.CellarStats
+import com.winecellar.domain.CellarStatsCalculator
 import com.winecellar.domain.DrinkStatus
 import com.winecellar.domain.DrinkWindowCalculator
 import com.winecellar.domain.FilterState
 import com.winecellar.domain.SortOrder
 import com.winecellar.domain.WineFilters
 import com.winecellar.domain.WineStyle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +26,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.time.Year
 import java.util.Date
@@ -106,6 +111,10 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
     val history: StateFlow<List<DrinkLog>> =
         repository.drinkLog.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val stats: StateFlow<CellarStats> =
+        repository.wines.map { CellarStatsCalculator.compute(it, currentYearNow()) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CellarStats())
+
     fun wine(id: Long) = repository.wine(id)
 
     fun currentYear(): Int = currentYearNow()
@@ -124,6 +133,42 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     fun lookupBarcode(barcode: String, onResult: (Wine?) -> Unit) {
         viewModelScope.launch { onResult(repository.findByBarcode(barcode)) }
+    }
+
+    // ---- import -----------------------------------------------------------
+
+    /**
+     * Read the file at [uri], detect CSV vs JSON by content, parse, and append
+     * the wines. [onResult] runs on the main thread with the number imported,
+     * or null if the file couldn't be read/parsed.
+     */
+    fun importFromUri(uri: Uri, onResult: (count: Int?) -> Unit) {
+        viewModelScope.launch {
+            val result: Int? = try {
+                val text = withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openInputStream(uri)
+                        ?.use { it.bufferedReader().readText() }
+                }
+                if (text.isNullOrBlank()) {
+                    null
+                } else {
+                    val wines = withContext(Dispatchers.Default) {
+                        val head = text.trimStart()
+                        if (head.startsWith("[") || head.startsWith("{")) {
+                            CellarImporter.parseJson(text)
+                        } else {
+                            CellarImporter.parseCsv(text)
+                        }
+                    }
+                    repository.importWines(wines)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            onResult(result)
+        }
     }
 
     // ---- export -----------------------------------------------------------

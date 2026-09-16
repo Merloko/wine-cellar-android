@@ -32,12 +32,17 @@ jobs:
       - name: Android Lint
         run: gradle lintDebug --no-daemon
 
-      - name: Upload lint report
+      - name: detekt (static analysis)
+        run: gradle detekt --no-daemon
+
+      - name: Upload analysis reports
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: lint-report
-          path: app/build/reports/lint-results-debug.*
+          name: analysis-reports
+          path: |
+            app/build/reports/lint-results-debug.*
+            app/build/reports/detekt/*
           retention-days: 30
 
       - name: Build debug APK

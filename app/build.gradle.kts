@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.kapt")
+    id("io.gitlab.arturbosch.detekt") version "1.23.6"
 }
 
 android {
@@ -89,6 +90,13 @@ kapt {
     arguments {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
+}
+
+// Static analysis. Non-blocking for now (reports uploaded in CI); flip
+// ignoreFailures to false once the baseline is triaged.
+detekt {
+    buildUponDefaultConfig = true
+    ignoreFailures = true
 }
 
 dependencies {
