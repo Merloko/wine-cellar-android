@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -14,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -25,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -35,10 +38,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import com.winecellar.R
+import com.winecellar.data.LookupOutcome
 import com.winecellar.data.Wine
 
 private val COMMON_LOCATIONS = listOf("Cellar", "Fridge", "Front Fridge", "Downstairs Fridge")
@@ -51,10 +57,12 @@ fun AddEditWineScreen(
     knownLocations: List<String>,
     knownWineries: List<String>,
     initialBarcode: String? = null,
+    onLookupBarcode: (barcode: String, onResult: (LookupOutcome) -> Unit) -> Unit = { _, _ -> },
     onCancel: () -> Unit,
     onSave: (Wine) -> Unit,
 ) {
     val isNew = initial == null
+    val context = LocalContext.current
 
     var winery by rememberSaveable { mutableStateOf(initial?.winery ?: "") }
     var vintage by rememberSaveable { mutableStateOf(initial?.vintage?.toString() ?: "") }
@@ -72,6 +80,7 @@ fun AddEditWineScreen(
     var notes by rememberSaveable { mutableStateOf(initial?.notes ?: "") }
     var barcode by rememberSaveable { mutableStateOf(initial?.barcode ?: initialBarcode ?: "") }
     var favorite by rememberSaveable { mutableStateOf(initial?.favorite ?: false) }
+    var lookingUp by rememberSaveable { mutableStateOf(false) }
 
     val canSave = winery.isNotBlank()
 
@@ -161,6 +170,39 @@ fun AddEditWineScreen(
 
             SectionLabel(stringResource(R.string.section_extras))
             Field(barcode, { barcode = it }, stringResource(R.string.field_barcode), supporting = stringResource(R.string.field_barcode_help))
+            if (barcode.isNotBlank()) {
+                TextButton(
+                    onClick = {
+                        lookingUp = true
+                        // App context: the callback returns on the retained VM scope.
+                        val appContext = context.applicationContext
+                        onLookupBarcode(barcode.trim()) { outcome ->
+                            lookingUp = false
+                            when (outcome) {
+                                is LookupOutcome.Found -> {
+                                    if (winery.isBlank()) outcome.result.winery?.let { winery = it }
+                                    if (name.isBlank()) outcome.result.name?.let { name = it }
+                                    if (country.isBlank()) outcome.result.country?.let { country = it }
+                                    Toast.makeText(appContext, appContext.getString(R.string.lookup_filled), Toast.LENGTH_SHORT).show()
+                                }
+                                LookupOutcome.NotFound ->
+                                    Toast.makeText(appContext, appContext.getString(R.string.lookup_not_found), Toast.LENGTH_SHORT).show()
+                                LookupOutcome.Error ->
+                                    Toast.makeText(appContext, appContext.getString(R.string.lookup_failed), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    enabled = !lookingUp,
+                ) {
+                    if (lookingUp) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.lookup_searching))
+                    } else {
+                        Text(stringResource(R.string.action_lookup_online))
+                    }
+                }
+            }
             Field(notes, { notes = it }, stringResource(R.string.field_notes), singleLine = false)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.label_favourite), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))

@@ -110,6 +110,11 @@
     <string name="drink_window_help">Leave blank to let the app estimate from the grape and vintage.</string>
     <string name="field_barcode">Barcode</string>
     <string name="field_barcode_help">Scanned automatically when you add via the scanner</string>
+    <string name="action_lookup_online">Look up online</string>
+    <string name="lookup_searching">Looking up…</string>
+    <string name="lookup_filled">Filled in details from the barcode.</string>
+    <string name="lookup_not_found">No details found for that barcode.</string>
+    <string name="lookup_failed">Lookup failed — check your connection.</string>
     <string name="field_notes">Notes</string>
     <string name="label_favourite">Favourite</string>
 

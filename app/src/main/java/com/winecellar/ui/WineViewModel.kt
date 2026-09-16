@@ -6,9 +6,11 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winecellar.WineCellarApp
+import com.winecellar.data.BarcodeLookup
 import com.winecellar.data.CellarExporter
 import com.winecellar.data.CellarImporter
 import com.winecellar.data.DrinkLog
+import com.winecellar.data.LookupOutcome
 import com.winecellar.data.Wine
 import com.winecellar.data.WineRepository
 import com.winecellar.domain.CellarStats
@@ -137,6 +139,18 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     fun lookupBarcode(barcode: String, onResult: (Wine?) -> Unit) {
         viewModelScope.launch { onResult(repository.findByBarcode(barcode)) }
+    }
+
+    /**
+     * Opt-in online lookup of product info for a barcode (Open Food Facts).
+     * Only ever called from an explicit "Look up online" tap. [onResult] runs on
+     * the main thread with the result, or null on error / not found.
+     */
+    fun lookupBarcodeOnline(barcode: String, onResult: (LookupOutcome) -> Unit) {
+        viewModelScope.launch {
+            val outcome = withContext(Dispatchers.IO) { BarcodeLookup.fetch(barcode) }
+            onResult(outcome)
+        }
     }
 
     // ---- import -----------------------------------------------------------

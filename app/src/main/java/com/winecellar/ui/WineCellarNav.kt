@@ -136,6 +136,7 @@ fun WineCellarRoot(vm: WineViewModel = viewModel()) {
                 knownLocations = state.locations,
                 knownWineries = state.wineries,
                 initialBarcode = barcode,
+                onLookupBarcode = vm::lookupBarcodeOnline,
                 onCancel = { nav.popBackStack() },
                 onSave = { wine -> vm.save(wine); nav.popBackStack() },
             )
@@ -149,6 +150,7 @@ fun WineCellarRoot(vm: WineViewModel = viewModel()) {
                 initial = wine,
                 knownLocations = state.locations,
                 knownWineries = state.wineries,
+                onLookupBarcode = vm::lookupBarcodeOnline,
                 onCancel = { nav.popBackStack() },
                 onSave = { updated -> vm.save(updated); nav.popBackStack() },
             )

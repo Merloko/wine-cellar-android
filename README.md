@@ -3,8 +3,11 @@
 An offline-first Android app for managing a home wine cellar. Add wines, find
 exactly where a bottle is stored, and see at a glance what's ready to drink now.
 
-No account, no cloud, no network permission — every bottle lives in an on-device
-SQLite database.
+No account, no cloud sync — every bottle lives in an on-device SQLite database.
+The only network use is one **opt-in** feature: the "Look up online" button on
+the add/edit screen, which sends just a scanned barcode to the free Open Food
+Facts API to pre-fill a wine's details. Nothing happens unless you tap it, and
+no cellar data is ever uploaded.
 
 ## Features
 
@@ -27,8 +30,12 @@ SQLite database.
   ML Kit barcode model (fully offline). A known bottle jumps straight to its
   entry; a new one opens the Add form pre-filled with the barcode, so the next
   scan of that wine is instant.
-- **Export** — share the whole cellar as CSV or JSON via the Android share
-  sheet. The JSON matches the seed schema, so an export can be re-imported.
+- **Look up online (opt-in)** — on the add/edit screen, a *Look up online* button
+  queries the free Open Food Facts API for the barcode and pre-fills winery /
+  name / country. It's the only networked feature and runs only when tapped.
+- **Export / import** — share the whole cellar as CSV or JSON via the Android
+  share sheet, and import it back (format auto-detected). JSON matches the seed
+  schema.
 
 ## Data model
 
@@ -77,4 +84,4 @@ with `sdk.dir=...`.
 | | |
 |---|---|
 | Android | 10 (API 29) or higher |
-| Internet | **Never required** |
+| Internet | Only for the opt-in "Look up online" barcode lookup; not needed for anything else |
