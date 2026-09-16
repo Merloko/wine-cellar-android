@@ -9,7 +9,7 @@ class CellarStatsTest {
     private val year = 2026
 
     private val wines = listOf(
-        Wine(id = 1, winery = "McHenry Hohnen", vintage = 2021, grapeType = "Grenache;Syrah;Mataro", country = "Australia", quantity = 3), // bold red, ready
+        Wine(id = 1, winery = "McHenry Hohnen", vintage = 2021, grapeType = "Grenache;Syrah;Mataro", country = "Australia", quantity = 3), // medium red (GSM), ready
         Wine(id = 2, winery = "Woody Nook", vintage = 2024, grapeType = "Sauvignon Blanc", country = "Australia", quantity = 2), // white, ready
         Wine(id = 3, winery = "G.H. Mumm", vintage = null, grapeType = "Champagne", country = "France", quantity = 1), // sparkling NV, ready
         Wine(id = 4, winery = "Old Vasse", vintage = 2005, grapeType = "Rose", country = "Australia", quantity = 4), // rose, past peak
@@ -38,7 +38,8 @@ class CellarStatsTest {
 
     @Test fun by_style_is_bottles_desc() {
         val stats = CellarStatsCalculator.compute(wines, year)
-        assertEquals(WineStyle.RED_BOLD to 5, stats.byStyle.first()) // 3 GSM(syrah) + 2 cab
+        // Rosé leads with 4 bottles; the GSM (3) is now medium, the Cabernet (2) bold.
+        assertEquals(WineStyle.ROSE to 4, stats.byStyle.first())
     }
 
     @Test fun by_country_aggregates_bottles() {
