@@ -1,6 +1,7 @@
 package com.winecellar.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winecellar.WineCellarApp
@@ -50,7 +51,12 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository: WineRepository = (app as WineCellarApp).repository
 
-    /** Evaluated per emission so drink-window status stays correct across a date change. */
+    /**
+     * Read fresh on each flow emission rather than pinned at ViewModel
+     * construction, so drink-window status picks up the new year the next time
+     * the cellar changes. (A pure midnight rollover with no data change won't
+     * refresh on its own — acceptable for this app.)
+     */
     private fun currentYearNow(): Int = Year.now().value
 
     private val filterState = MutableStateFlow(FilterState())
@@ -119,14 +125,20 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- export -----------------------------------------------------------
 
-    fun requestExport(format: ExportFormat, onReady: (fileName: String, mimeType: String, content: String) -> Unit) {
+    /**
+     * Build the export off the UI, write it on [viewModelScope] (so it survives
+     * the cellar screen leaving composition), and hand back a shareable Uri.
+     * [onReady] runs on the main thread with a null Uri if the write failed.
+     */
+    fun requestExport(format: ExportFormat, onReady: (uri: Uri?, mimeType: String) -> Unit) {
         viewModelScope.launch {
             val wines = repository.allWinesOnce()
             val content = when (format) {
                 ExportFormat.CSV -> CellarExporter.toCsv(wines)
                 ExportFormat.JSON -> CellarExporter.toJson(wines)
             }
-            onReady(format.fileName, format.mimeType, content)
+            val uri = ExportUtils.writeExport(getApplication(), format.fileName, content)
+            onReady(uri, format.mimeType)
         }
     }
 

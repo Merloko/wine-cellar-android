@@ -1,6 +1,7 @@
 package com.winecellar.ui
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
@@ -27,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,7 +39,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import kotlinx.coroutines.launch
 
 private object Routes {
     const val CELLAR = "cellar"
@@ -169,8 +168,18 @@ fun WineCellarRoot(vm: WineViewModel = viewModel()) {
 @Composable
 private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var menu by remember { mutableStateOf(false) }
+
+    // The write runs on the ViewModel scope (survives navigation); launching the
+    // share sheet is a quick synchronous call once the file's Uri is ready.
+    fun export(format: ExportFormat) {
+        menu = false
+        vm.requestExport(format) { uri, mime ->
+            if (uri == null || !ExportUtils.launchShare(context, uri, mime)) {
+                Toast.makeText(context, "Couldn't export the cellar.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     IconButton(onClick = { nav.navigate(Routes.SCAN) }) {
         Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan barcode")
@@ -181,21 +190,11 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
         DropdownMenuItem(
             text = { Text("Export as CSV") },
-            onClick = {
-                menu = false
-                vm.requestExport(ExportFormat.CSV) { name, mime, content ->
-                    scope.launch { ExportUtils.share(context, name, mime, content) }
-                }
-            },
+            onClick = { export(ExportFormat.CSV) },
         )
         DropdownMenuItem(
             text = { Text("Export as JSON") },
-            onClick = {
-                menu = false
-                vm.requestExport(ExportFormat.JSON) { name, mime, content ->
-                    scope.launch { ExportUtils.share(context, name, mime, content) }
-                }
-            },
+            onClick = { export(ExportFormat.JSON) },
         )
     }
 }
