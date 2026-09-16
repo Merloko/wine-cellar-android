@@ -22,7 +22,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.time.Year
+import java.util.Date
+import java.util.Locale
 
 /** Immutable snapshot the cellar screen renders from. */
 data class CellarUiState(
@@ -35,9 +38,9 @@ data class CellarUiState(
 )
 
 /** Supported cellar export formats. */
-enum class ExportFormat(val fileName: String, val mimeType: String) {
-    CSV("wine_cellar.csv", "text/csv"),
-    JSON("wine_cellar.json", "application/json"),
+enum class ExportFormat(val extension: String, val mimeType: String) {
+    CSV("csv", "text/csv"),
+    JSON("json", "application/json"),
 }
 
 /** Buckets for the "what to drink now" screen. */
@@ -137,7 +140,10 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
                 ExportFormat.CSV -> CellarExporter.toCsv(wines)
                 ExportFormat.JSON -> CellarExporter.toJson(wines)
             }
-            val uri = ExportUtils.writeExport(getApplication(), format.fileName, content)
+            // Timestamped so rapid re-exports never write the same file concurrently.
+            val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+            val fileName = "wine_cellar_$stamp.${format.extension}"
+            val uri = ExportUtils.writeExport(getApplication(), fileName, content)
             onReady(uri, format.mimeType)
         }
     }

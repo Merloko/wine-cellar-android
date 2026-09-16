@@ -174,9 +174,12 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
     // share sheet is a quick synchronous call once the file's Uri is ready.
     fun export(format: ExportFormat) {
         menu = false
+        // Use the application context: the callback runs on the retained
+        // viewModelScope and may fire after this Activity is gone.
+        val appContext = context.applicationContext
         vm.requestExport(format) { uri, mime ->
-            if (uri == null || !ExportUtils.launchShare(context, uri, mime)) {
-                Toast.makeText(context, "Couldn't export the cellar.", Toast.LENGTH_SHORT).show()
+            if (uri == null || !ExportUtils.launchShare(appContext, uri, mime)) {
+                Toast.makeText(appContext, "Couldn't export the cellar.", Toast.LENGTH_SHORT).show()
             }
         }
     }
