@@ -48,11 +48,17 @@ enum class WineStyle(
             if (any("champagne", "sparkling", "prosecco", "cava", "cremant", "crémant", "brut", "cordon")) {
                 return SPARKLING
             }
-            if (any("rose", "rosé", "saignee", "saignée", "d'anjou")) return ROSE
+            // Match rosé words whole so "Primrose"/"Rosewood" aren't mistaken for rosé.
+            val words = t.split(Regex("[^\\p{L}]+"))
+            if (words.any { it == "rose" || it == "rosé" || it == "saignee" || it == "saignée" } ||
+                "d'anjou" in t
+            ) {
+                return ROSE
+            }
 
             // Tannic, long-lived varietals dominate a blend's ageing potential.
             if (any(
-                    "cabernet", "cabernet franc", "cab franc", "bordeaux", "bdx", "malbec",
+                    "cabernet", "cab franc", "bordeaux", "bdx", "malbec",
                     "petit verdot", "nebbiolo", "touriga", "tannat", "aglianico", "alicante",
                 )
             ) return RED_BOLD

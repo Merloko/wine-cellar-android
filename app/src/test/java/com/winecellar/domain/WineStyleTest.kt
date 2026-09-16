@@ -47,6 +47,12 @@ class WineStyleTest {
         assertEquals(WineStyle.UNKNOWN, WineStyle.classify(null, "Rapsodhy in Red"))
     }
 
+    @Test fun rose_is_matched_as_a_whole_word() {
+        // A substring "rose" inside another word must not force the Rosé style.
+        assertEquals(WineStyle.RED_BOLD, WineStyle.classify("Shiraz", "Primrose Hill"))
+        assertEquals(WineStyle.WHITE, WineStyle.classify("Sauvignon Blanc", "Rosewood Reserve"))
+    }
+
     @Test fun whites() {
         assertEquals(WineStyle.WHITE, WineStyle.classify("Sauvignon Blanc"))
         assertEquals(WineStyle.WHITE, WineStyle.classify("Chardonnay"))
