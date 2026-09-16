@@ -45,15 +45,17 @@ object CellarStatsCalculator {
             .map { (style, list) -> style to list.sumOf { it.quantity } }
             .sortedWith(compareByDescending<Pair<WineStyle, Int>> { it.second }.thenBy { it.first.ordinal })
 
+        // Group case-insensitively so inconsistent casing from an import merges;
+        // display the first-seen spelling.
         val byCountry = wines
             .filter { !it.country.isNullOrBlank() }
-            .groupBy { it.country!!.trim() }
-            .map { (country, list) -> StatBucket(country, list.sumOf { it.quantity }) }
+            .groupBy { it.country!!.trim().lowercase() }
+            .map { (_, list) -> StatBucket(list.first().country!!.trim(), list.sumOf { it.quantity }) }
             .sortedWith(compareByDescending<StatBucket> { it.bottles }.thenBy { it.label.lowercase() })
 
         val topWineries = wines
-            .groupBy { it.winery }
-            .map { (winery, list) -> StatBucket(winery, list.sumOf { it.quantity }) }
+            .groupBy { it.winery.trim().lowercase() }
+            .map { (_, list) -> StatBucket(list.first().winery.trim(), list.sumOf { it.quantity }) }
             .sortedWith(compareByDescending<StatBucket> { it.bottles }.thenBy { it.label.lowercase() })
             .take(TOP_WINERIES)
 

@@ -2,6 +2,7 @@ package com.winecellar.ui
 
 import android.app.Application
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winecellar.WineCellarApp
@@ -47,6 +48,9 @@ enum class ExportFormat(val extension: String, val mimeType: String) {
     CSV("csv", "text/csv"),
     JSON("json", "application/json"),
 }
+
+/** Import files larger than this are rejected to avoid OOM on an unexpected pick. */
+private const val MAX_IMPORT_BYTES = 10L * 1024 * 1024
 
 /** Buckets for the "what to drink now" screen. */
 data class DrinkNowState(
@@ -146,8 +150,14 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val result: Int? = try {
                 val raw = withContext(Dispatchers.IO) {
-                    getApplication<Application>().contentResolver.openInputStream(uri)
-                        ?.use { it.bufferedReader().readText() }
+                    val resolver = getApplication<Application>().contentResolver
+                    val size = resolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)
+                        ?.use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else -1L } ?: -1L
+                    if (size > MAX_IMPORT_BYTES) {
+                        null
+                    } else {
+                        resolver.openInputStream(uri)?.use { it.bufferedReader().readText() }
+                    }
                 }
                 // Strip a leading UTF-8 BOM (Excel/Sheets add one) so it doesn't
                 // break format detection or the first CSV header cell.
@@ -184,9 +194,11 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
     fun requestExport(format: ExportFormat, onReady: (uri: Uri?, mimeType: String) -> Unit) {
         viewModelScope.launch {
             val wines = repository.allWinesOnce()
-            val content = when (format) {
-                ExportFormat.CSV -> CellarExporter.toCsv(wines)
-                ExportFormat.JSON -> CellarExporter.toJson(wines)
+            val content = withContext(Dispatchers.Default) {
+                when (format) {
+                    ExportFormat.CSV -> CellarExporter.toCsv(wines)
+                    ExportFormat.JSON -> CellarExporter.toJson(wines)
+                }
             }
             // Timestamped so rapid re-exports never write the same file concurrently.
             val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
