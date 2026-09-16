@@ -29,6 +29,17 @@ jobs:
       - name: Run unit tests
         run: gradle testDebugUnitTest --no-daemon
 
+      - name: Android Lint
+        run: gradle lintDebug --no-daemon
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.*
+          retention-days: 30
+
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
 

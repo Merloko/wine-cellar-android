@@ -1,6 +1,7 @@
 package com.winecellar.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winecellar.WineCellarApp
@@ -21,7 +22,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.time.Year
+import java.util.Date
+import java.util.Locale
 
 /** Immutable snapshot the cellar screen renders from. */
 data class CellarUiState(
@@ -34,9 +38,9 @@ data class CellarUiState(
 )
 
 /** Supported cellar export formats. */
-enum class ExportFormat(val fileName: String, val mimeType: String) {
-    CSV("wine_cellar.csv", "text/csv"),
-    JSON("wine_cellar.json", "application/json"),
+enum class ExportFormat(val extension: String, val mimeType: String) {
+    CSV("csv", "text/csv"),
+    JSON("json", "application/json"),
 }
 
 /** Buckets for the "what to drink now" screen. */
@@ -49,14 +53,21 @@ data class DrinkNowState(
 class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository: WineRepository = (app as WineCellarApp).repository
-    private val currentYear: Int = Calendar.getInstance().get(Calendar.YEAR)
+
+    /**
+     * Read fresh on each flow emission rather than pinned at ViewModel
+     * construction, so drink-window status picks up the new year the next time
+     * the cellar changes. (A pure midnight rollover with no data change won't
+     * refresh on its own — acceptable for this app.)
+     */
+    private fun currentYearNow(): Int = Year.now().value
 
     private val filterState = MutableStateFlow(FilterState())
 
     val uiState: StateFlow<CellarUiState> =
         combine(repository.wines, filterState) { wines, filter ->
             CellarUiState(
-                wines = WineFilters.apply(wines, filter, currentYear),
+                wines = WineFilters.apply(wines, filter, currentYearNow()),
                 filter = filter,
                 locations = wines.mapNotNull { it.location?.takeIf(String::isNotBlank) }
                     .distinct().sorted(),
@@ -69,7 +80,7 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     val drinkNow: StateFlow<DrinkNowState> =
         repository.wines.map { wines ->
-            val year = currentYear
+            val year = currentYearNow()
             val ready = ArrayList<Wine>()
             val past = ArrayList<Wine>()
             val soon = ArrayList<Wine>()
@@ -97,7 +108,7 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     fun wine(id: Long) = repository.wine(id)
 
-    fun currentYear() = currentYear
+    fun currentYear(): Int = currentYearNow()
 
     // ---- drink history ----------------------------------------------------
 
@@ -117,14 +128,23 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- export -----------------------------------------------------------
 
-    fun requestExport(format: ExportFormat, onReady: (fileName: String, mimeType: String, content: String) -> Unit) {
+    /**
+     * Build the export off the UI, write it on [viewModelScope] (so it survives
+     * the cellar screen leaving composition), and hand back a shareable Uri.
+     * [onReady] runs on the main thread with a null Uri if the write failed.
+     */
+    fun requestExport(format: ExportFormat, onReady: (uri: Uri?, mimeType: String) -> Unit) {
         viewModelScope.launch {
             val wines = repository.allWinesOnce()
             val content = when (format) {
                 ExportFormat.CSV -> CellarExporter.toCsv(wines)
                 ExportFormat.JSON -> CellarExporter.toJson(wines)
             }
-            onReady(format.fileName, format.mimeType, content)
+            // Timestamped so rapid re-exports never write the same file concurrently.
+            val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+            val fileName = "wine_cellar_$stamp.${format.extension}"
+            val uri = ExportUtils.writeExport(getApplication(), fileName, content)
+            onReady(uri, format.mimeType)
         }
     }
 

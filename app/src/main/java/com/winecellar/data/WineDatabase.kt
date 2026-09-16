@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Wine::class, DrinkLog::class], version = 2, exportSchema = false)
+@Database(entities = [Wine::class, DrinkLog::class], version = 2, exportSchema = true)
 abstract class WineDatabase : RoomDatabase() {
 
     abstract fun wineDao(): WineDao
@@ -18,7 +18,7 @@ abstract class WineDatabase : RoomDatabase() {
         private var INSTANCE: WineDatabase? = null
 
         /** v1 → v2: add the barcode column and the drink history table. */
-        private val MIGRATION_1_2 = object : Migration(1, 2) {
+        internal val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE wines ADD COLUMN barcode TEXT")
                 db.execSQL(

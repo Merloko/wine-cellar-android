@@ -36,7 +36,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Shrink, obfuscate and strip unused resources from release builds.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -70,6 +72,22 @@ android {
         unitTests {
             isIncludeAndroidResources = true
         }
+    }
+
+    lint {
+        // Surface issues in CI without failing the build yet; flip to true once
+        // the baseline is triaged. HTML/XML reports are uploaded as artifacts.
+        abortOnError = false
+        checkReleaseBuilds = false
+        warningsAsErrors = false
+    }
+}
+
+// Export the Room schema so migrations can be diffed and validated. The
+// generated JSON lands in app/schemas/ on build — commit it to lock in history.
+kapt {
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 

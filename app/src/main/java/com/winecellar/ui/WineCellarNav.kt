@@ -1,6 +1,7 @@
 package com.winecellar.ui
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
@@ -169,6 +170,20 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
 
+    // The write runs on the ViewModel scope (survives navigation); launching the
+    // share sheet is a quick synchronous call once the file's Uri is ready.
+    fun export(format: ExportFormat) {
+        menu = false
+        // Use the application context: the callback runs on the retained
+        // viewModelScope and may fire after this Activity is gone.
+        val appContext = context.applicationContext
+        vm.requestExport(format) { uri, mime ->
+            if (uri == null || !ExportUtils.launchShare(appContext, uri, mime)) {
+                Toast.makeText(appContext, "Couldn't export the cellar.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     IconButton(onClick = { nav.navigate(Routes.SCAN) }) {
         Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan barcode")
     }
@@ -178,21 +193,11 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
         DropdownMenuItem(
             text = { Text("Export as CSV") },
-            onClick = {
-                menu = false
-                vm.requestExport(ExportFormat.CSV) { name, mime, content ->
-                    ExportUtils.share(context, name, mime, content)
-                }
-            },
+            onClick = { export(ExportFormat.CSV) },
         )
         DropdownMenuItem(
             text = { Text("Export as JSON") },
-            onClick = {
-                menu = false
-                vm.requestExport(ExportFormat.JSON) { name, mime, content ->
-                    ExportUtils.share(context, name, mime, content)
-                }
-            },
+            onClick = { export(ExportFormat.JSON) },
         )
     }
 }
