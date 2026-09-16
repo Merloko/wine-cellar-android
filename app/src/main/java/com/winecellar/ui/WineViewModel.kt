@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.time.Year
 
 /** Immutable snapshot the cellar screen renders from. */
 data class CellarUiState(
@@ -49,14 +49,16 @@ data class DrinkNowState(
 class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository: WineRepository = (app as WineCellarApp).repository
-    private val currentYear: Int = Calendar.getInstance().get(Calendar.YEAR)
+
+    /** Evaluated per emission so drink-window status stays correct across a date change. */
+    private fun currentYearNow(): Int = Year.now().value
 
     private val filterState = MutableStateFlow(FilterState())
 
     val uiState: StateFlow<CellarUiState> =
         combine(repository.wines, filterState) { wines, filter ->
             CellarUiState(
-                wines = WineFilters.apply(wines, filter, currentYear),
+                wines = WineFilters.apply(wines, filter, currentYearNow()),
                 filter = filter,
                 locations = wines.mapNotNull { it.location?.takeIf(String::isNotBlank) }
                     .distinct().sorted(),
@@ -69,7 +71,7 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     val drinkNow: StateFlow<DrinkNowState> =
         repository.wines.map { wines ->
-            val year = currentYear
+            val year = currentYearNow()
             val ready = ArrayList<Wine>()
             val past = ArrayList<Wine>()
             val soon = ArrayList<Wine>()
@@ -97,7 +99,7 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     fun wine(id: Long) = repository.wine(id)
 
-    fun currentYear() = currentYear
+    fun currentYear(): Int = currentYearNow()
 
     // ---- drink history ----------------------------------------------------
 

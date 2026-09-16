@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +39,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.launch
 
 private object Routes {
     const val CELLAR = "cellar"
@@ -167,6 +169,7 @@ fun WineCellarRoot(vm: WineViewModel = viewModel()) {
 @Composable
 private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var menu by remember { mutableStateOf(false) }
 
     IconButton(onClick = { nav.navigate(Routes.SCAN) }) {
@@ -181,7 +184,7 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
             onClick = {
                 menu = false
                 vm.requestExport(ExportFormat.CSV) { name, mime, content ->
-                    ExportUtils.share(context, name, mime, content)
+                    scope.launch { ExportUtils.share(context, name, mime, content) }
                 }
             },
         )
@@ -190,7 +193,7 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
             onClick = {
                 menu = false
                 vm.requestExport(ExportFormat.JSON) { name, mime, content ->
-                    ExportUtils.share(context, name, mime, content)
+                    scope.launch { ExportUtils.share(context, name, mime, content) }
                 }
             },
         )
