@@ -28,21 +28,25 @@ object CellarStatsCalculator {
     fun compute(wines: List<Wine>, currentYear: Int): CellarStats {
         if (wines.isEmpty()) return CellarStats()
 
+        // Classify each wine once and reuse the style for both its drink status
+        // and the by-style breakdown (statusFor previously re-classified).
         var ready = 0
         var cellaring = 0
         var pastPeak = 0
+        val bottlesByStyle = HashMap<WineStyle, Int>()
         for (w in wines) {
-            when (DrinkWindowCalculator.statusFor(w, currentYear)) {
+            val style = WineStyle.classify(w.grapeType, w.name)
+            when (DrinkWindowCalculator.statusFor(w, style, currentYear)) {
                 DrinkStatus.READY -> ready += w.quantity
                 DrinkStatus.TOO_YOUNG -> cellaring += w.quantity
                 DrinkStatus.PAST_PEAK -> pastPeak += w.quantity
                 DrinkStatus.UNKNOWN -> Unit
             }
+            bottlesByStyle[style] = (bottlesByStyle[style] ?: 0) + w.quantity
         }
 
-        val byStyle = wines
-            .groupBy { WineStyle.classify(it.grapeType, it.name) }
-            .map { (style, list) -> style to list.sumOf { it.quantity } }
+        val byStyle = bottlesByStyle.entries
+            .map { (style, bottles) -> style to bottles }
             .sortedWith(compareByDescending<Pair<WineStyle, Int>> { it.second }.thenBy { it.first.ordinal })
 
         // Group case-insensitively so inconsistent casing from an import merges;

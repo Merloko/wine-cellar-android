@@ -8,7 +8,9 @@ package com.winecellar.data
  */
 object CellarImporter {
 
-    fun parseJson(text: String): List<Wine> = SeedLoader.parse(text)
+    // minQuantity = 0 so a wine drunk down to zero bottles round-trips as zero,
+    // rather than being floored back to 1 the way the bundled seed is.
+    fun parseJson(text: String): List<Wine> = SeedLoader.parse(text, minQuantity = 0)
 
     fun parseCsv(text: String): List<Wine> {
         val rows = parseCsvRows(text)
@@ -52,7 +54,8 @@ object CellarImporter {
                     rackRow = cell(iRackRow)?.toIntOrNull(),
                     country = cell(iCountry),
                     region = cell(iRegion),
-                    quantity = cell(iQty)?.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+                    // A present-but-zero count is kept; a missing/blank cell defaults to 1.
+                    quantity = cell(iQty)?.toIntOrNull()?.coerceAtLeast(0) ?: 1,
                     drinkFrom = cell(iFrom)?.toIntOrNull(),
                     drinkTo = cell(iTo)?.toIntOrNull(),
                     drinkWindowNote = cell(iWindowNote),

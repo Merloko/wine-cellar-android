@@ -48,6 +48,18 @@ class CellarImporterTest {
         assertNull(parsed.first().grapeType)
     }
 
+    @Test fun zero_bottle_wine_round_trips_as_zero() {
+        // A wine drunk down to its last bottle must not spring back to 1 on
+        // re-import (unlike the bundled seed, which floors an empty count to 1).
+        val wines = listOf(Wine(id = 1, winery = "Empty Rack", vintage = 2018, quantity = 0))
+
+        val fromCsv = CellarImporter.parseCsv(CellarExporter.toCsv(wines))
+        assertEquals(0, fromCsv.first().quantity)
+
+        val fromJson = CellarImporter.parseJson(CellarExporter.toJson(wines))
+        assertEquals(0, fromJson.first().quantity)
+    }
+
     @Test fun json_round_trips_from_exporter() {
         val wines = listOf(
             Wine(id = 1, winery = "Woody Nook", vintage = 2021, name = "G&T", grapeType = "Grenache;Tempranillo", quantity = 2, favorite = true),
