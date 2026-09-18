@@ -61,6 +61,17 @@ data class DrinkNowState(
     val soon: List<Wine> = emptyList(),
 )
 
+/**
+ * State of the opt-in online barcode lookup. Held on the ViewModel so an
+ * in-flight request and its result survive a configuration change (e.g. a
+ * rotation) instead of being lost with the composition that launched it.
+ */
+sealed interface BarcodeLookupState {
+    data object Idle : BarcodeLookupState
+    data object InFlight : BarcodeLookupState
+    data class Complete(val outcome: LookupOutcome) : BarcodeLookupState
+}
+
 class WineViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository: WineRepository = (app as WineCellarApp).repository
@@ -144,16 +155,27 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { onResult(repository.findByBarcode(barcode)) }
     }
 
+    private val _barcodeLookup = MutableStateFlow<BarcodeLookupState>(BarcodeLookupState.Idle)
+    val barcodeLookup: StateFlow<BarcodeLookupState> = _barcodeLookup
+
     /**
      * Opt-in online lookup of product info for a barcode (Open Food Facts).
-     * Only ever called from an explicit "Look up online" tap. [onResult] runs on
-     * the main thread with the result, or null on error / not found.
+     * Only ever called from an explicit "Look up online" tap. The result is
+     * published on [barcodeLookup] rather than a callback, so it survives a
+     * rotation mid-request; the screen applies it and then calls [consumeBarcodeLookup].
      */
-    fun lookupBarcodeOnline(barcode: String, onResult: (LookupOutcome) -> Unit) {
+    fun lookupBarcodeOnline(barcode: String) {
+        if (_barcodeLookup.value is BarcodeLookupState.InFlight) return
+        _barcodeLookup.value = BarcodeLookupState.InFlight
         viewModelScope.launch {
             val outcome = withContext(Dispatchers.IO) { BarcodeLookup.fetch(barcode) }
-            onResult(outcome)
+            _barcodeLookup.value = BarcodeLookupState.Complete(outcome)
         }
+    }
+
+    /** Reset the lookup state once the screen has applied a completed result. */
+    fun consumeBarcodeLookup() {
+        _barcodeLookup.value = BarcodeLookupState.Idle
     }
 
     // ---- import -----------------------------------------------------------

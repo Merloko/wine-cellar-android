@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,7 +58,9 @@ fun AddEditWineScreen(
     knownLocations: List<String>,
     knownWineries: List<String>,
     initialBarcode: String? = null,
-    onLookupBarcode: (barcode: String, onResult: (LookupOutcome) -> Unit) -> Unit = { _, _ -> },
+    lookupState: BarcodeLookupState = BarcodeLookupState.Idle,
+    onLookupBarcode: (barcode: String) -> Unit = {},
+    onConsumeLookup: () -> Unit = {},
     onCancel: () -> Unit,
     onSave: (Wine) -> Unit,
 ) {
@@ -80,12 +83,30 @@ fun AddEditWineScreen(
     var notes by rememberSaveable { mutableStateOf(initial?.notes ?: "") }
     var barcode by rememberSaveable { mutableStateOf(initial?.barcode ?: initialBarcode ?: "") }
     var favorite by rememberSaveable { mutableStateOf(initial?.favorite ?: false) }
-    // Transient (not rememberSaveable): a config change mid-lookup clears the
-    // spinner rather than stranding it, since the callback is tied to this
-    // composition.
-    var lookingUp by remember { mutableStateOf(false) }
 
     val canSave = winery.isNotBlank()
+
+    // The lookup runs on the ViewModel, so its result survives a rotation. When
+    // one completes, pre-fill blank fields, toast the outcome, and clear it.
+    val lookingUp = lookupState is BarcodeLookupState.InFlight
+    LaunchedEffect(lookupState) {
+        val state = lookupState
+        if (state is BarcodeLookupState.Complete) {
+            val appContext = context.applicationContext
+            when (val outcome = state.outcome) {
+                is LookupOutcome.Found -> {
+                    if (winery.isBlank()) outcome.result.winery?.let { winery = it }
+                    if (name.isBlank()) outcome.result.name?.let { name = it }
+                    Toast.makeText(appContext, appContext.getString(R.string.lookup_filled), Toast.LENGTH_SHORT).show()
+                }
+                LookupOutcome.NotFound ->
+                    Toast.makeText(appContext, appContext.getString(R.string.lookup_not_found), Toast.LENGTH_SHORT).show()
+                LookupOutcome.Error ->
+                    Toast.makeText(appContext, appContext.getString(R.string.lookup_failed), Toast.LENGTH_SHORT).show()
+            }
+            onConsumeLookup()
+        }
+    }
 
     fun buildWine(): Wine = (initial ?: Wine(winery = "")).copy(
         winery = winery.trim(),
@@ -98,7 +119,8 @@ fun AddEditWineScreen(
         rackRow = rackRow.trim().toIntOrNull(),
         country = country.trim().ifBlank { null },
         region = region.trim().ifBlank { null },
-        quantity = quantity.trim().toIntOrNull()?.coerceAtLeast(1) ?: 1,
+        // Keep an explicit 0 (a wine emptied but retained); a blank field defaults to 1.
+        quantity = quantity.trim().toIntOrNull()?.coerceAtLeast(0) ?: 1,
         drinkFrom = drinkFrom.trim().toIntOrNull(),
         drinkTo = drinkTo.trim().toIntOrNull(),
         notes = notes.trim().ifBlank { null },
@@ -175,25 +197,7 @@ fun AddEditWineScreen(
             Field(barcode, { barcode = it }, stringResource(R.string.field_barcode), supporting = stringResource(R.string.field_barcode_help))
             if (barcode.isNotBlank()) {
                 TextButton(
-                    onClick = {
-                        lookingUp = true
-                        // App context: the callback returns on the retained VM scope.
-                        val appContext = context.applicationContext
-                        onLookupBarcode(barcode.trim()) { outcome ->
-                            lookingUp = false
-                            when (outcome) {
-                                is LookupOutcome.Found -> {
-                                    if (winery.isBlank()) outcome.result.winery?.let { winery = it }
-                                    if (name.isBlank()) outcome.result.name?.let { name = it }
-                                    Toast.makeText(appContext, appContext.getString(R.string.lookup_filled), Toast.LENGTH_SHORT).show()
-                                }
-                                LookupOutcome.NotFound ->
-                                    Toast.makeText(appContext, appContext.getString(R.string.lookup_not_found), Toast.LENGTH_SHORT).show()
-                                LookupOutcome.Error ->
-                                    Toast.makeText(appContext, appContext.getString(R.string.lookup_failed), Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    },
+                    onClick = { onLookupBarcode(barcode.trim()) },
                     enabled = !lookingUp,
                 ) {
                     if (lookingUp) {

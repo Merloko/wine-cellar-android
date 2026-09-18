@@ -47,6 +47,14 @@ class SeedLoaderTest {
         assertEquals(null, w.rackColumn)
     }
 
+    @Test fun seed_floors_quantity_to_one_but_import_can_keep_zero() {
+        val json = """[{"winery":"Empty Rack","quantity":0}]"""
+        // Default (seed) path: a zero/blank count becomes 1 bottle.
+        assertEquals(1, SeedLoader.parse(json).first().quantity)
+        // Import path passes minQuantity = 0, preserving an emptied wine.
+        assertEquals(0, SeedLoader.parse(json, minQuantity = 0).first().quantity)
+    }
+
     @Test fun seeds_bundled_asset_into_database() = runBlocking {
         assertEquals(0, dao.count())
         SeedLoader.seedIfEmpty(context, dao)

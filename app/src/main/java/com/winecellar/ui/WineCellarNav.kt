@@ -131,12 +131,15 @@ fun WineCellarRoot(vm: WineViewModel = viewModel()) {
         ) { entry ->
             val barcode = entry.arguments?.getString("barcode")
             val state by vm.uiState.collectAsStateWithLifecycle()
+            val lookup by vm.barcodeLookup.collectAsStateWithLifecycle()
             AddEditWineScreen(
                 initial = null,
                 knownLocations = state.locations,
                 knownWineries = state.wineries,
                 initialBarcode = barcode,
+                lookupState = lookup,
                 onLookupBarcode = vm::lookupBarcodeOnline,
+                onConsumeLookup = vm::consumeBarcodeLookup,
                 onCancel = { nav.popBackStack() },
                 onSave = { wine -> vm.save(wine); nav.popBackStack() },
             )
@@ -146,11 +149,14 @@ fun WineCellarRoot(vm: WineViewModel = viewModel()) {
             val id = entry.arguments?.getString("id")?.toLongOrNull() ?: -1L
             val wine by vm.wine(id).collectAsStateWithLifecycle(initialValue = null)
             val state by vm.uiState.collectAsStateWithLifecycle()
+            val lookup by vm.barcodeLookup.collectAsStateWithLifecycle()
             AddEditWineScreen(
                 initial = wine,
                 knownLocations = state.locations,
                 knownWineries = state.wineries,
+                lookupState = lookup,
                 onLookupBarcode = vm::lookupBarcodeOnline,
+                onConsumeLookup = vm::consumeBarcodeLookup,
                 onCancel = { nav.popBackStack() },
                 onSave = { updated -> vm.save(updated); nav.popBackStack() },
             )

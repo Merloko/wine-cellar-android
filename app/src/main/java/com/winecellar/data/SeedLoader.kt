@@ -20,8 +20,14 @@ object SeedLoader {
         dao.insertAll(parse(json))
     }
 
-    /** Parse the seed JSON array into [Wine] rows. Kept pure for unit testing. */
-    fun parse(json: String): List<Wine> {
+    /**
+     * Parse a JSON array into [Wine] rows. Kept pure for unit testing.
+     *
+     * [minQuantity] floors the bottle count: the bundled seed uses 1 (a starter
+     * wine is never zero bottles), but re-importing an exported cellar passes 0
+     * so a wine drunk down to zero stays at zero instead of springing back to 1.
+     */
+    fun parse(json: String, minQuantity: Int = 1): List<Wine> {
         val arr = JSONArray(json)
         val out = ArrayList<Wine>(arr.length())
         for (i in 0 until arr.length()) {
@@ -39,7 +45,7 @@ object SeedLoader {
                 rackRow = o.intOrNull("rackRow"),
                 country = o.stringOrNull("country"),
                 region = o.stringOrNull("region"),
-                quantity = (o.intOrNull("quantity") ?: 1).coerceAtLeast(1),
+                quantity = (o.intOrNull("quantity") ?: 1).coerceAtLeast(minQuantity),
                 drinkFrom = o.intOrNull("drinkFrom"),
                 drinkTo = o.intOrNull("drinkTo"),
                 drinkWindowNote = o.stringOrNull("drinkWindowNote"),
