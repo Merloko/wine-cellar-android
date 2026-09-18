@@ -39,14 +39,15 @@ class MigrationTest {
         context.deleteDatabase(dbName)
     }
 
-    @Test fun migrate1To2_preservesRows_addsBarcodeColumn_andDrinkLogTable() = runBlocking {
+    @Test fun migrate1To3_preservesRows_addsBarcodeColumn_drinkLogTable_andBarcodeIndex() = runBlocking {
         createV1DatabaseWithOneRow()
 
         val db = Room.databaseBuilder(context, WineDatabase::class.java, dbName)
-            .addMigrations(WineDatabase.MIGRATION_1_2)
+            .addMigrations(WineDatabase.MIGRATION_1_2, WineDatabase.MIGRATION_2_3)
             .build()
 
-        // First query triggers open → migration → Room schema validation.
+        // First query triggers open → migrations → Room schema validation
+        // (which checks the barcode index the v2→v3 migration must create).
         val wines = db.wineDao().observeAll().first()
         assertEquals(1, wines.size)
         val wine = wines.first()
@@ -54,7 +55,12 @@ class MigrationTest {
         assertEquals(2021, wine.vintage)
         assertEquals(3, wine.quantity)
         assertTrue(wine.favorite)
-        assertNull(wine.barcode) // column added by the migration, defaults null
+        assertNull(wine.barcode) // column added by the 1→2 migration, defaults null
+
+        // The barcode index exists after the 2→3 migration.
+        db.openHelper.readableDatabase
+            .query("SELECT name FROM sqlite_master WHERE type='index' AND name='index_wines_barcode'")
+            .use { assertTrue("expected index_wines_barcode to exist", it.moveToFirst()) }
 
         // The new drink_log table exists and is writable.
         db.drinkLogDao().insert(DrinkLog(wineId = wine.id, title = "test", winery = "Woody Nook"))

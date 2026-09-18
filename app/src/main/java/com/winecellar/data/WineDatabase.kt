@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Wine::class, DrinkLog::class], version = 2, exportSchema = true)
+@Database(entities = [Wine::class, DrinkLog::class], version = 3, exportSchema = true)
 abstract class WineDatabase : RoomDatabase() {
 
     abstract fun wineDao(): WineDao
@@ -39,13 +39,24 @@ abstract class WineDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v2 → v3: index the barcode column so scan-to-find is an index probe.
+         * The index name must match Room's generated name for `Index("barcode")`
+         * (`index_wines_barcode`) or the post-migration schema check will fail.
+         */
+        internal val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_wines_barcode` ON `wines` (`barcode`)")
+            }
+        }
+
         fun get(context: Context): WineDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     WineDatabase::class.java,
                     "wine_cellar.db",
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
     }
 }
