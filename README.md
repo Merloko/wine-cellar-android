@@ -99,31 +99,42 @@ gradle assembleDebug       # build a debug APK
 Requires the Android SDK (API 36) via `ANDROID_SDK_ROOT` or a `local.properties`
 with `sdk.dir=...`.
 
-## Publishing to Google Play
+## Releases (GitHub only)
 
-Google Play uploads use an **App Bundle** (`.aab`), not an APK (APKs are only
-for sideloading). To produce a signed bundle:
+The app is distributed as a downloadable APK on the repo's
+[Releases](../../releases) page — no app store involved. To install, download
+the `.apk` from a release onto an Android device and open it (you may need to
+allow "install unknown apps" for your browser/file manager the first time).
 
-1. **Create an upload keystore** (once), and keep it out of the repo:
-   ```bash
-   keytool -genkeypair -v -keystore upload.keystore -alias wine \
-     -keyalg RSA -keysize 2048 -validity 10000
-   ```
-2. **Build the bundle** with the signing config supplied via env vars (the same
-   `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD` the Gradle config reads):
-   ```bash
-   gradle bundleRelease        # → app/build/outputs/bundle/release/app-release.aab
-   ```
-   In CI the release APK **and** AAB are built on every run (R8 validated); they
-   are signed and uploaded as artifacts only when the `WINE_KEYSTORE_BASE64`,
-   `WINE_KEYSTORE_PASSWORD`, `WINE_KEY_ALIAS`, and `WINE_KEY_PASSWORD` repo
-   secrets are set.
-3. In the **Play Console**, create the app, enable **Play App Signing**, upload
-   the `.aab` to an Internal testing track first, complete the Store listing,
-   Data Safety, and content-rating forms, then promote to Production.
+**Cutting a release** — push a version tag and the `Release APK` workflow
+(`.github/workflows/release.yml`) builds the APK and attaches it to a GitHub
+Release automatically:
 
-Bump `versionCode` (strictly increasing) in `app/build.gradle.kts` for every
-upload.
+```bash
+git tag v1.0
+git push origin v1.0
+```
+
+(You can also run the workflow manually from the Actions tab and supply a tag.)
+
+**Signing.** The workflow ships a *signed release* APK when the repo has these
+secrets set — otherwise it falls back to the *debug* APK, which is still
+installable via sideloading (an unsigned release APK will not install):
+
+- `WINE_KEYSTORE_BASE64` — base64 of your keystore file
+- `WINE_KEYSTORE_PASSWORD`, `WINE_KEY_ALIAS`, `WINE_KEY_PASSWORD`
+
+Generate a keystore once (keep it out of the repo):
+
+```bash
+keytool -genkeypair -v -keystore release.keystore -alias wine \
+  -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 release.keystore   # paste into the WINE_KEYSTORE_BASE64 secret
+```
+
+Bump `versionName` (and `versionCode`) in `app/build.gradle.kts` before tagging
+a new release so installs upgrade cleanly. Keep the same signing key across
+releases, or Android will refuse to update an already-installed copy.
 
 ## Requirements
 
