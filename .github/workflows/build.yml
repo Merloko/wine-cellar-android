@@ -78,15 +78,16 @@ jobs:
           WINE_KEYSTORE_BASE64: ${{ secrets.WINE_KEYSTORE_BASE64 }}
         run: echo "$WINE_KEYSTORE_BASE64" | base64 -d > app/release.keystore
 
-      # Build both the APK (sideloading) and the AAB (App Bundle — the format
-      # Google Play requires for uploads). Both validate R8/resource shrinking;
-      # both are signed only when the WINE_* secrets are set.
-      - name: Build release APK + AAB (validates R8; signed when secrets are set)
+      # Build the release APK so R8/resource shrinking is validated on every run
+      # (signed only when the WINE_* secrets are set). Distribution is via GitHub
+      # Releases — see .github/workflows/release.yml, which attaches the APK to a
+      # Release on a version tag.
+      - name: Build release APK (validates R8; signed when secrets are set)
         env:
           KEYSTORE_PASSWORD: ${{ secrets.WINE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.WINE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.WINE_KEY_PASSWORD }}
-        run: gradle assembleRelease bundleRelease --no-daemon
+        run: gradle assembleRelease --no-daemon
 
       - name: Upload signed release APK
         if: steps.signing.outputs.enabled == 'true'
@@ -94,12 +95,4 @@ jobs:
         with:
           name: wine-cellar-release
           path: app/build/outputs/apk/release/*.apk
-          retention-days: 30
-
-      - name: Upload signed release AAB (upload this to Google Play)
-        if: steps.signing.outputs.enabled == 'true'
-        uses: actions/upload-artifact@v6
-        with:
-          name: wine-cellar-release-bundle
-          path: app/build/outputs/bundle/release/*.aab
           retention-days: 30
