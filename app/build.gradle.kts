@@ -7,12 +7,16 @@ plugins {
 
 android {
     namespace = "com.winecellar"
-    compileSdk = 34
+    // API 36 (Android 16): Google Play requires new apps/updates to target a
+    // recent API level, so we compile and target 36. minSdk stays at 29.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.winecellar"
         minSdk = 29
-        targetSdk = 34
+        targetSdk = 36
+        // Bump versionCode on every Play upload (must strictly increase);
+        // versionName is the human-facing string shown on the listing.
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

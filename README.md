@@ -89,16 +89,41 @@ com.winecellar
 ## Build
 
 The CI-installed Gradle is used (the wrapper jar is intentionally not committed,
-matching the repo's `.gitignore`). With Gradle 8.6 and JDK 17 on your PATH:
+matching the repo's `.gitignore`). With Gradle 8.11.1 and JDK 17 on your PATH:
 
 ```bash
-cd WineCellar
 gradle testDebugUnitTest   # run unit + Robolectric tests
 gradle assembleDebug       # build a debug APK
 ```
 
-Requires the Android SDK (API 34) via `ANDROID_SDK_ROOT` or a `local.properties`
+Requires the Android SDK (API 36) via `ANDROID_SDK_ROOT` or a `local.properties`
 with `sdk.dir=...`.
+
+## Publishing to Google Play
+
+Google Play uploads use an **App Bundle** (`.aab`), not an APK (APKs are only
+for sideloading). To produce a signed bundle:
+
+1. **Create an upload keystore** (once), and keep it out of the repo:
+   ```bash
+   keytool -genkeypair -v -keystore upload.keystore -alias wine \
+     -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. **Build the bundle** with the signing config supplied via env vars (the same
+   `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD` the Gradle config reads):
+   ```bash
+   gradle bundleRelease        # → app/build/outputs/bundle/release/app-release.aab
+   ```
+   In CI the release APK **and** AAB are built on every run (R8 validated); they
+   are signed and uploaded as artifacts only when the `WINE_KEYSTORE_BASE64`,
+   `WINE_KEYSTORE_PASSWORD`, `WINE_KEY_ALIAS`, and `WINE_KEY_PASSWORD` repo
+   secrets are set.
+3. In the **Play Console**, create the app, enable **Play App Signing**, upload
+   the `.aab` to an Internal testing track first, complete the Store listing,
+   Data Safety, and content-rating forms, then promote to Production.
+
+Bump `versionCode` (strictly increasing) in `app/build.gradle.kts` for every
+upload.
 
 ## Requirements
 

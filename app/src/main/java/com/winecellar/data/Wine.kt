@@ -1,6 +1,7 @@
 package com.winecellar.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -12,7 +13,9 @@ import androidx.room.PrimaryKey
  *   [shelf]     — which shelf within it     (Top, Second, Bottom…)
  *   [rackColumn]/[rackRow] — grid coordinate on that shelf (column 1‑n, row 1‑n)
  */
-@Entity(tableName = "wines")
+// Indexed on barcode so the scan-to-find lookup (findByBarcode) is an index
+// probe rather than a table scan.
+@Entity(tableName = "wines", indices = [Index("barcode")])
 data class Wine(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val winery: String,
