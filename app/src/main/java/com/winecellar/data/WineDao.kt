@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,16 @@ interface WineDao {
 
     @Insert
     suspend fun insertAll(wines: List<Wine>)
+
+    @Query("DELETE FROM wines")
+    suspend fun clear()
+
+    /** Replace the entire cellar with [wines] atomically (used by Restore). */
+    @Transaction
+    suspend fun replaceAll(wines: List<Wine>) {
+        clear()
+        insertAll(wines)
+    }
 
     @Update
     suspend fun update(wine: Wine)

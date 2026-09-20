@@ -26,6 +26,32 @@
         <item quantity="other">Imported %d wines.</item>
     </plurals>
 
+    <!-- CSV sync (a linked file on Drive / Dropbox / local storage) -->
+    <string name="action_sync_link">Link a CSV to sync…</string>
+    <string name="sync_link_title">Link a sync file</string>
+    <string name="sync_link_message">Choose where your cellar CSV lives. Google Drive, Dropbox and local storage all appear in the picker. Nothing is uploaded automatically — you back up and restore on demand.</string>
+    <string name="action_sync_create">Create a new CSV</string>
+    <string name="action_sync_choose">Choose an existing CSV</string>
+    <string name="sync_default_filename">wine_cellar.csv</string>
+    <string name="sync_linked_label">Synced file: %1$s</string>
+    <string name="sync_linked_label_generic">Synced file linked</string>
+    <string name="action_backup">Back up cellar → file</string>
+    <string name="action_restore">Restore cellar ← file</string>
+    <string name="action_unlink">Unlink sync file</string>
+    <string name="sync_linked">Linked. Use \"Back up\" to save your cellar to it.</string>
+    <string name="sync_backup_ok">Backed up to %1$s.</string>
+    <string name="sync_backup_ok_generic">Cellar backed up.</string>
+    <string name="sync_backup_failed">Back up failed — the file may not allow writing.</string>
+    <string name="sync_restore_failed">Couldn\'t read the linked file.</string>
+    <string name="sync_restore_title">Restore from file?</string>
+    <string name="sync_restore_message">This replaces your whole cellar with the contents of %1$s. This can\'t be undone.</string>
+    <string name="sync_restore_message_generic">This replaces your whole cellar with the contents of the linked file. This can\'t be undone.</string>
+    <string name="action_restore_confirm">Replace cellar</string>
+    <plurals name="sync_restore_success">
+        <item quantity="one">Restored %d wine from the file.</item>
+        <item quantity="other">Restored %d wines from the file.</item>
+    </plurals>
+
     <!-- Cellar screen -->
     <string name="search_placeholder">Search winery, grape, year, region…</string>
     <string name="action_clear_search">Clear search</string>
