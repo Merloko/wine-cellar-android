@@ -36,6 +36,13 @@ no cellar data is ever uploaded.
 - **Export / import** — share the whole cellar as CSV or JSON via the Android
   share sheet, and import it back (format auto-detected). JSON matches the seed
   schema.
+- **Sync to a CSV (opt-in)** — link a CSV once through Android's document picker
+  — Google Drive, Dropbox and local storage all show up there — then **Back up**
+  (cellar → file) or **Restore** (file → cellar, replacing it) with one tap from
+  the cellar overflow menu. Nothing uploads automatically and no account is
+  required; it's the same Storage Access Framework the export/import already use,
+  just with the chosen file remembered. Restore replaces the whole cellar and
+  asks for confirmation first.
 
 ## Data model
 

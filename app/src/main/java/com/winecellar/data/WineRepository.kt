@@ -27,6 +27,16 @@ class WineRepository(
         return wines.size
     }
 
+    /**
+     * Replace the whole cellar with [wines] (used by Restore-from-file). Returns
+     * how many rows the cellar now holds. Atomic: on any failure the old cellar
+     * is left intact.
+     */
+    suspend fun replaceAllWines(wines: List<Wine>): Int {
+        dao.replaceAll(wines)
+        return wines.size
+    }
+
     suspend fun findByBarcode(barcode: String): Wine? = dao.findByBarcode(barcode)
 
     /**

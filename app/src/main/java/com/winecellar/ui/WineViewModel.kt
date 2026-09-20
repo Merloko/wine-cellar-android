@@ -1,7 +1,9 @@
 package com.winecellar.ui
 
 import android.app.Application
+import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.winecellar.WineCellarApp
@@ -10,6 +12,7 @@ import com.winecellar.data.CellarExporter
 import com.winecellar.data.CellarImporter
 import com.winecellar.data.DrinkLog
 import com.winecellar.data.LookupOutcome
+import com.winecellar.data.SyncPrefs
 import com.winecellar.data.Wine
 import com.winecellar.data.WineRepository
 import com.winecellar.domain.CellarStats
@@ -71,6 +74,12 @@ sealed interface BarcodeLookupState {
     data object InFlight : BarcodeLookupState
     data class Complete(val outcome: LookupOutcome) : BarcodeLookupState
 }
+
+/** The linked CSV "sync file", if any, shown in the cellar's overflow menu. */
+data class SyncState(
+    val linked: Boolean = false,
+    val fileName: String? = null,
+)
 
 class WineViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -178,6 +187,111 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
         _barcodeLookup.value = BarcodeLookupState.Idle
     }
 
+    // ---- sync file (linked CSV) -------------------------------------------
+
+    private val syncPrefs = SyncPrefs(app)
+    private val _syncState = MutableStateFlow(SyncState())
+    val syncState: StateFlow<SyncState> = _syncState
+
+    init { refreshSyncState() }
+
+    private fun refreshSyncState() {
+        val uri = syncPrefs.linkedUri
+        if (uri == null) {
+            _syncState.value = SyncState()
+            return
+        }
+        _syncState.value = SyncState(linked = true, fileName = _syncState.value.fileName)
+        viewModelScope.launch {
+            val name = withContext(Dispatchers.IO) { displayName(Uri.parse(uri)) }
+            _syncState.value = SyncState(linked = true, fileName = name)
+        }
+    }
+
+    private fun displayName(uri: Uri): String? = try {
+        getApplication<Application>().contentResolver
+            .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { if (it.moveToFirst()) it.getString(0) else null }
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Persist the CSV [uri] the user picked as the sync file (read + write). */
+    fun linkSyncFile(uri: Uri) {
+        try {
+            getApplication<Application>().contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        } catch (e: SecurityException) {
+            // Some providers don't offer a *persistable* grant; keep the URI and
+            // rely on the transient grant for this session.
+        }
+        syncPrefs.linkedUri = uri.toString()
+        refreshSyncState()
+    }
+
+    fun unlinkSyncFile() {
+        syncPrefs.linkedUri?.let { uriStr ->
+            try {
+                getApplication<Application>().contentResolver.releasePersistableUriPermission(
+                    Uri.parse(uriStr),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            } catch (e: SecurityException) {
+                // Nothing persisted to release; ignore.
+            }
+        }
+        syncPrefs.linkedUri = null
+        refreshSyncState()
+    }
+
+    /** Overwrite the linked file with the current cellar as CSV (Back up). */
+    fun backupToLinkedFile(onResult: (ok: Boolean) -> Unit) {
+        val uriStr = syncPrefs.linkedUri
+        if (uriStr == null) { onResult(false); return }
+        viewModelScope.launch {
+            val ok = try {
+                val wines = repository.allWinesOnce()
+                val csv = withContext(Dispatchers.Default) { CellarExporter.toCsv(wines) }
+                withContext(Dispatchers.IO) {
+                    // "wt" = truncate, so a shorter cellar can't leave stale bytes.
+                    getApplication<Application>().contentResolver
+                        .openOutputStream(Uri.parse(uriStr), "wt")?.use { out ->
+                            out.write(csv.toByteArray()); true
+                        } ?: false
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                false
+            }
+            onResult(ok)
+        }
+    }
+
+    /**
+     * Replace the whole cellar with the linked file's contents (Restore).
+     * [onResult] gets the new cellar size, or null if the file couldn't be
+     * read/parsed — in which case the existing cellar is left untouched.
+     */
+    fun restoreFromLinkedFile(onResult: (count: Int?) -> Unit) {
+        val uriStr = syncPrefs.linkedUri
+        if (uriStr == null) { onResult(null); return }
+        viewModelScope.launch {
+            val result: Int? = try {
+                val text = withContext(Dispatchers.IO) { readTextCapped(Uri.parse(uriStr)) }
+                val wines = parseCellar(text)
+                if (wines == null) null else repository.replaceAllWines(wines)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            onResult(result)
+        }
+    }
+
     // ---- import -----------------------------------------------------------
 
     /**
@@ -188,47 +302,48 @@ class WineViewModel(app: Application) : AndroidViewModel(app) {
     fun importFromUri(uri: Uri, onResult: (count: Int?) -> Unit) {
         viewModelScope.launch {
             val result: Int? = try {
-                // Read with a hard cap so a huge/unexpected pick can't OOM us,
-                // regardless of whether the provider reports a size.
-                val raw = withContext(Dispatchers.IO) {
-                    getApplication<Application>().contentResolver.openInputStream(uri)?.use { stream ->
-                        val reader = stream.bufferedReader()
-                        val builder = StringBuilder()
-                        val buffer = CharArray(8192)
-                        var total = 0L
-                        var overflow = false
-                        while (true) {
-                            val n = reader.read(buffer)
-                            if (n < 0) break
-                            total += n
-                            if (total > MAX_IMPORT_CHARS) { overflow = true; break }
-                            builder.append(buffer, 0, n)
-                        }
-                        if (overflow) null else builder.toString()
-                    }
-                }
-                // Strip a leading UTF-8 BOM (Excel/Sheets add one) so it doesn't
-                // break format detection or the first CSV header cell.
-                val text = raw?.removePrefix("﻿")
-                if (text.isNullOrBlank()) {
-                    null
-                } else {
-                    val wines = withContext(Dispatchers.Default) {
-                        // Our JSON export is always a top-level array.
-                        if (text.trimStart().startsWith("[")) {
-                            CellarImporter.parseJson(text)
-                        } else {
-                            CellarImporter.parseCsv(text)
-                        }
-                    }
-                    repository.importWines(wines)
-                }
+                val text = withContext(Dispatchers.IO) { readTextCapped(uri) }
+                val wines = parseCellar(text)
+                if (wines == null) null else repository.importWines(wines)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
                 null
             }
             onResult(result)
+        }
+    }
+
+    /**
+     * Read a document's text with a hard character cap so a huge/unexpected pick
+     * can't OOM us, regardless of whether the provider reports a size. Returns
+     * null if the stream can't be opened or the cap is exceeded. Runs on IO.
+     */
+    private fun readTextCapped(uri: Uri): String? =
+        getApplication<Application>().contentResolver.openInputStream(uri)?.use { stream ->
+            val reader = stream.bufferedReader()
+            val builder = StringBuilder()
+            val buffer = CharArray(8192)
+            var total = 0L
+            while (true) {
+                val n = reader.read(buffer)
+                if (n < 0) break
+                total += n
+                if (total > MAX_IMPORT_CHARS) return null
+                builder.append(buffer, 0, n)
+            }
+            builder.toString()
+        }
+
+    /** Parse cellar text (CSV or, if it starts with '[', JSON). Null if blank. */
+    private suspend fun parseCellar(raw: String?): List<Wine>? {
+        // Strip a leading UTF-8 BOM (Excel/Sheets add one) so it doesn't break
+        // format detection or the first CSV header cell.
+        val text = raw?.removePrefix("﻿")
+        if (text.isNullOrBlank()) return null
+        return withContext(Dispatchers.Default) {
+            if (text.trimStart().startsWith("[")) CellarImporter.parseJson(text)
+            else CellarImporter.parseCsv(text)
         }
     }
 

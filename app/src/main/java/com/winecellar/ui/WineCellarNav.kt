@@ -1,5 +1,7 @@
 package com.winecellar.ui
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,10 +16,12 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +29,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -183,11 +188,14 @@ fun WineCellarRoot(vm: WineViewModel = viewModel()) {
     }
 }
 
-/** Cellar top-bar actions: quick scan + an export overflow menu. */
+/** Cellar top-bar actions: quick scan + an export / sync overflow menu. */
 @Composable
 private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
+    var showLinkChoice by remember { mutableStateOf(false) }
+    var showRestoreConfirm by remember { mutableStateOf(false) }
+    val sync by vm.syncState.collectAsStateWithLifecycle()
 
     // Import: pick any file, then sniff CSV vs JSON by content.
     val importLauncher = rememberLauncherForActivityResult(
@@ -206,6 +214,41 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
         }
     }
 
+    // Link an EXISTING csv as the sync file. Request read+write+persistable so a
+    // later "Back up" can overwrite it (the default OpenDocument grant is read-only).
+    val linkExistingContract = remember {
+        object : ActivityResultContracts.OpenDocument() {
+            override fun createIntent(context: Context, input: Array<String>): Intent =
+                super.createIntent(context, input).addFlags(
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
+                )
+        }
+    }
+    val linkExistingLauncher = rememberLauncherForActivityResult(linkExistingContract) { uri ->
+        if (uri != null) {
+            vm.linkSyncFile(uri)
+            Toast.makeText(context.applicationContext, context.getString(R.string.sync_linked), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Create a NEW csv, link it, and seed it with the current cellar.
+    val createLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv"),
+    ) { uri ->
+        if (uri != null) {
+            val appContext = context.applicationContext
+            vm.linkSyncFile(uri)
+            vm.backupToLinkedFile { ok ->
+                Toast.makeText(
+                    appContext,
+                    appContext.getString(if (ok) R.string.sync_backup_ok_generic else R.string.sync_backup_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+
     // The write runs on the ViewModel scope (survives navigation); launching the
     // share sheet is a quick synchronous call once the file's Uri is ready.
     fun export(format: ExportFormat) {
@@ -217,6 +260,32 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
             if (uri == null || !ExportUtils.launchShare(appContext, uri, mime)) {
                 Toast.makeText(appContext, appContext.getString(R.string.export_failed), Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    fun backup() {
+        menu = false
+        val appContext = context.applicationContext
+        val name = sync.fileName
+        vm.backupToLinkedFile { ok ->
+            val msg = when {
+                !ok -> appContext.getString(R.string.sync_backup_failed)
+                name != null -> appContext.getString(R.string.sync_backup_ok, name)
+                else -> appContext.getString(R.string.sync_backup_ok_generic)
+            }
+            Toast.makeText(appContext, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun restore() {
+        val appContext = context.applicationContext
+        vm.restoreFromLinkedFile { count ->
+            val msg = if (count == null) {
+                appContext.getString(R.string.sync_restore_failed)
+            } else {
+                appContext.resources.getQuantityString(R.plurals.sync_restore_success, count, count)
+            }
+            Toast.makeText(appContext, msg, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -240,6 +309,82 @@ private fun RowScope.CellarActions(vm: WineViewModel, nav: NavHostController) {
             onClick = {
                 menu = false
                 importLauncher.launch(arrayOf("*/*"))
+            },
+        )
+
+        HorizontalDivider()
+
+        if (!sync.linked) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_sync_link)) },
+                onClick = { menu = false; showLinkChoice = true },
+            )
+        } else {
+            DropdownMenuItem(
+                enabled = false,
+                text = {
+                    Text(
+                        sync.fileName?.let { stringResource(R.string.sync_linked_label, it) }
+                            ?: stringResource(R.string.sync_linked_label_generic),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                },
+                onClick = {},
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_backup)) },
+                onClick = { backup() },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_restore)) },
+                onClick = { menu = false; showRestoreConfirm = true },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.action_unlink)) },
+                onClick = { menu = false; vm.unlinkSyncFile() },
+            )
+        }
+    }
+
+    if (showLinkChoice) {
+        AlertDialog(
+            onDismissRequest = { showLinkChoice = false },
+            title = { Text(stringResource(R.string.sync_link_title)) },
+            text = { Text(stringResource(R.string.sync_link_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLinkChoice = false
+                    createLauncher.launch(context.getString(R.string.sync_default_filename))
+                }) { Text(stringResource(R.string.action_sync_create)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showLinkChoice = false
+                    linkExistingLauncher.launch(arrayOf("*/*"))
+                }) { Text(stringResource(R.string.action_sync_choose)) }
+            },
+        )
+    }
+
+    if (showRestoreConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRestoreConfirm = false },
+            title = { Text(stringResource(R.string.sync_restore_title)) },
+            text = {
+                Text(
+                    sync.fileName?.let { stringResource(R.string.sync_restore_message, it) }
+                        ?: stringResource(R.string.sync_restore_message_generic),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showRestoreConfirm = false; restore() }) {
+                    Text(stringResource(R.string.action_restore_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }
