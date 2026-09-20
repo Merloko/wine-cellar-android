@@ -15,10 +15,11 @@ android {
         applicationId = "com.winecellar"
         minSdk = 29
         targetSdk = 36
-        // Bump versionCode on every Play upload (must strictly increase);
-        // versionName is the human-facing string shown on the listing.
-        versionCode = 1
-        versionName = "1.0"
+        // Bump versionCode on every release tag (must strictly increase, or a
+        // device won't install the new APK over an older one); versionName is
+        // the human-facing string shown to users.
+        versionCode = 2
+        versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
